@@ -1,6 +1,10 @@
 # API Routes
 
-Проект уже имеет серверные маршруты для ключевых пользовательских действий. Пока Supabase env не заполнен, они возвращают mock-ответы. Если `.env.local` содержит Supabase URL/key, маршруты пытаются записать данные в Supabase.
+Проект уже имеет серверные маршруты для ключевых пользовательских действий. Пока Supabase env не заполнен, они возвращают mock-ответы. Если `.env.local` содержит Supabase URL/key и service role key, маршруты записывают данные в Supabase из server-side кода.
+
+Публичные POST routes не переводят донаты в `paid` и не раскрывают секретные ключи клиенту. Записи создаются сервером через service role client, а публичное чтение персональных данных остается закрытым RLS.
+
+Все `/api/admin/*` routes требуют Supabase Auth session и роль `admin` или `superadmin` в `profiles.role`. Роль `moderator` не видит админ-панель и зарезервирована для будущей модерации комментариев. Временный bootstrap-доступ задается через `ADMIN_BOOTSTRAP_EMAILS`.
 
 ## `POST /api/donations`
 
@@ -49,7 +53,7 @@ Payload:
 - `mock`: возвращает mock-заявку со статусом `new`.
 - `supabase`: создает запись в `volunteer_applications`.
 
-## Следующие API routes
+## Admin API routes
 
 ## `PATCH /api/admin/buildings/[slug]`
 
@@ -67,12 +71,56 @@ Payload:
 
 Обновляет публичное имя, текст, видимость и закрепление записи летописи.
 
+## `PATCH /api/admin/donations/[id]`
+
+Обновляет статус доната. Переход `pending -> paid`:
+
+- выставляет `paid_at`;
+- увеличивает `buildings.collected_amount`;
+- увеличивает `collection_items.collected_amount`;
+- увеличивает `collection_items.quantity_funded`;
+- создает запись в `chronicle_entries`.
+
+Повторный `paid` для уже оплаченного доната идемпотентен: суммы и летопись не дублируются, `paid_at` не меняется. Переход из `paid` в другой статус заблокирован до отдельного refund-сценария.
+
+## `PATCH /api/admin/volunteer-applications/[id]`
+
+Обновляет статус и комментарий волонтерской заявки. Если переданы `hours`, route создает или обновляет запись `volunteer_hours`, пересчитывает points и синхронизирует запись летописи без дублей для той же заявки.
+
+## `PATCH /api/admin/settings`
+
+Сохраняет singleton-настройки проекта в `project_settings`.
+
+Поддерживает:
+
+- базовые реквизиты проекта;
+- юридические тексты;
+- активный платежный режим: `mock`, `tbank_collection_manual`, `yookassa`;
+- включение ручного сценария Т-Банк Сборов;
+- публичную ссылку и описание сбора.
+
+Секреты ЮKassa через этот route не принимаются и не хранятся в БД. Они должны быть только в server env.
+
+## `GET /api/admin/users`
+
+Возвращает список профилей пользователей для админки. Требует роль `admin` или `superadmin`.
+
+## `PATCH /api/admin/users/[id]`
+
+Обновляет роль пользователя в `profiles.role`.
+
+Разрешенные назначения:
+
+- `participant`;
+- `moderator`;
+- `admin`.
+
+`moderator` не получает доступ к `/admin`; `admin` получает доступ к админ-панели. Назначать `admin` может только `superadmin`.
+
 ## Следующие API routes
 
 План:
 
 - `POST /api/yookassa/create-payment`;
 - `POST /api/yookassa/webhook`;
-- `PATCH /api/admin/volunteer-applications/[id]`;
-- `PATCH /api/admin/donations/[id]`;
 - `POST /api/admin/media`.

@@ -5,9 +5,11 @@ import { ArrowLeft, Heart, ScrollText } from "lucide-react";
 import { ChronicleList } from "@/components/ChronicleList";
 import { ProgressSummary } from "@/components/building/ProgressSummary";
 import { SupportSection } from "@/components/building/SupportSection";
-import { getBuildingBySlug, getBuildings, getChronicleEntries } from "@/lib/data";
+import { getBuildingBySlug, getBuildings, getChronicleEntries, getProjectSettings } from "@/lib/data";
 import { statusLabels, zoneLabels } from "@/lib/seed";
 import { BuildingIcon } from "@/components/BuildingIcon";
+
+export const dynamic = "force-dynamic";
 
 type ObjectPageProps = {
   params: Promise<{
@@ -48,7 +50,10 @@ export default async function ObjectPage({ params }: ObjectPageProps) {
     notFound();
   }
 
-  const objectChronicleEntries = await getChronicleEntries({ buildingSlug: building.slug, limit: 3 });
+  const [objectChronicleEntries, paymentSettings] = await Promise.all([
+    getChronicleEntries({ buildingSlug: building.slug, limit: 3 }),
+    getProjectSettings()
+  ]);
   return (
     <main className="object-page shell">
       <Link href="/" className="secondary-button back-link">
@@ -97,6 +102,7 @@ export default async function ObjectPage({ params }: ObjectPageProps) {
             budget={building.budget}
             slots={building.slots}
             chronicleEntries={objectChronicleEntries}
+            paymentSettings={paymentSettings}
           />
         </article>
       </section>

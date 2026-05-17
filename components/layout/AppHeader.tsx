@@ -37,7 +37,7 @@ export function AppHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link href="/account" className="secondary-button border-gold/30 bg-transparent text-parchment-light">
+          <Link href="/auth/login" className="secondary-button border-gold/30 bg-transparent text-parchment-light">
             <UserCircle size={18} />
             Войти
           </Link>
@@ -62,7 +62,7 @@ export function AppHeader() {
                 {link.label}
               </Link>
             ))}
-            <Link href="/account" className="rounded-md px-2 py-3 text-gold" onClick={() => setIsOpen(false)}>
+            <Link href="/auth/login" className="rounded-md px-2 py-3 text-gold" onClick={() => setIsOpen(false)}>
               Войти
             </Link>
           </nav>

@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import { FormEvent, useMemo, useState } from "react";
-import { CheckCircle2, Heart, X } from "lucide-react";
-import type { ChronicleEntry, DonationSlot } from "@/lib/types";
+import { CheckCircle2, ExternalLink, Heart, X } from "lucide-react";
+import type { ChronicleEntry, DonationSlot, ProjectSettings } from "@/lib/types";
 import { formatCurrency } from "@/lib/format";
 import { ProgressSummary } from "./ProgressSummary";
 import { ChronicleFeed } from "@/components/ChronicleFeed";
@@ -15,6 +15,7 @@ type SupportSectionProps = {
   budget: number;
   slots: DonationSlot[];
   chronicleEntries: ChronicleEntry[];
+  paymentSettings: ProjectSettings;
 };
 
 type MockDonation = {
@@ -22,9 +23,10 @@ type MockDonation = {
   donorName: string;
   donorEmail: string;
   publishName: boolean;
+  mode: "mock" | "tbank_collection_manual";
 };
 
-export function SupportSection({ buildingSlug, buildingTitle, collected, budget, slots, chronicleEntries }: SupportSectionProps) {
+export function SupportSection({ buildingSlug, buildingTitle, collected, budget, slots, chronicleEntries, paymentSettings }: SupportSectionProps) {
   const [selectedSlot, setSelectedSlot] = useState<DonationSlot | null>(null);
   const [localCollected, setLocalCollected] = useState(collected);
   const [fundedSlotIds, setFundedSlotIds] = useState<string[]>([]);
@@ -32,6 +34,10 @@ export function SupportSection({ buildingSlug, buildingTitle, collected, budget,
   const [lastDonation, setLastDonation] = useState<MockDonation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const tbankCollectionAvailable =
+    paymentSettings.paymentProviderPreference === "tbank_collection_manual" &&
+    paymentSettings.tbankCollectionEnabled &&
+    Boolean(paymentSettings.tbankCollectionUrl);
 
   const visibleSlots = useMemo(() => {
     return slots.map((slot) => ({
@@ -83,6 +89,13 @@ export function SupportSection({ buildingSlug, buildingTitle, collected, budget,
       return;
     }
 
+    if (tbankCollectionAvailable) {
+      setLastDonation({ slot: selectedSlot, donorName, donorEmail, publishName, mode: "tbank_collection_manual" });
+      setSelectedSlot(null);
+      setIsSubmitting(false);
+      return;
+    }
+
     setLocalCollected((value) => Math.min(budget, value + selectedSlot.price));
     setFundedSlotIds((ids) => [...ids, selectedSlot.id]);
     setLocalEntries((entries) => [
@@ -96,7 +109,7 @@ export function SupportSection({ buildingSlug, buildingTitle, collected, budget,
       },
       ...entries
     ]);
-    setLastDonation({ slot: selectedSlot, donorName, donorEmail, publishName });
+    setLastDonation({ slot: selectedSlot, donorName, donorEmail, publishName, mode: "mock" });
     setSelectedSlot(null);
     setIsSubmitting(false);
   }
@@ -113,11 +126,22 @@ export function SupportSection({ buildingSlug, buildingTitle, collected, budget,
 
       {lastDonation ? (
         <div className="success-note" role="status">
-          <CheckCircle2 size={21} />
+          {lastDonation.mode === "tbank_collection_manual" ? <ExternalLink size={21} /> : <CheckCircle2 size={21} />}
           <span>
-            Вклад от {lastDonation.publishName ? lastDonation.donorName : "Тайного доброхота"} принят в mock-режиме:
-            {" "}
-            {lastDonation.slot.title}, {formatCurrency(lastDonation.slot.price)}.
+            {lastDonation.mode === "tbank_collection_manual" ? (
+              <>
+                Заявка на вклад создана: {lastDonation.slot.title}, {formatCurrency(lastDonation.slot.price)}. Завершите перевод через{" "}
+                <a href={paymentSettings.tbankCollectionUrl} target="_blank" rel="noreferrer">
+                  {paymentSettings.tbankCollectionTitle}
+                </a>
+                .
+              </>
+            ) : (
+              <>
+                Вклад от {lastDonation.publishName ? lastDonation.donorName : "Тайного доброхота"} принят в mock-режиме:{" "}
+                {lastDonation.slot.title}, {formatCurrency(lastDonation.slot.price)}.
+              </>
+            )}
           </span>
         </div>
       ) : null}
@@ -175,10 +199,12 @@ export function SupportSection({ buildingSlug, buildingTitle, collected, budget,
             <button className="donation-form__close" type="button" onClick={() => setSelectedSlot(null)} aria-label="Закрыть форму">
               <X size={20} />
             </button>
-            <p className="eyebrow">Mock donation</p>
+            <p className="eyebrow">{tbankCollectionAvailable ? "Т-Банк Сборы" : "Mock donation"}</p>
             <h2 id="donation-title">Поддержать "{selectedSlot.title}"</h2>
             <p>
-              Сейчас это тестовый сценарий без оплаты. После подключения ЮKassa этот шаг будет создавать платеж и ждать webhook.
+              {tbankCollectionAvailable
+                ? paymentSettings.tbankCollectionDescription
+                : "Сейчас это тестовый сценарий без оплаты. После подключения ЮKassa этот шаг будет создавать платеж и ждать webhook."}
             </p>
             <label>
               Имя для летописи
@@ -194,12 +220,12 @@ export function SupportSection({ buildingSlug, buildingTitle, collected, budget,
             </label>
             {submitError ? <div className="form-error">{submitError}</div> : null}
             <div className="donation-form__total">
-              <span>Сумма mock-вклада</span>
+              <span>{tbankCollectionAvailable ? "Сумма заявки" : "Сумма mock-вклада"}</span>
               <strong>{formatCurrency(selectedSlot.price)}</strong>
             </div>
             <button className="primary-button" type="submit" disabled={isSubmitting}>
-              <CheckCircle2 size={18} />
-              {isSubmitting ? "Отправляем..." : "Подтвердить mock-вклад"}
+              {tbankCollectionAvailable ? <ExternalLink size={18} /> : <CheckCircle2 size={18} />}
+              {isSubmitting ? "Отправляем..." : tbankCollectionAvailable ? "Создать заявку и получить ссылку" : "Подтвердить mock-вклад"}
             </button>
           </form>
         </div>

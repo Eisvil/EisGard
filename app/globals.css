@@ -538,6 +538,13 @@ button {
   margin-top: 0.05rem;
 }
 
+.success-note a {
+  color: var(--forest-dark);
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 0.18rem;
+}
+
 .form-error {
   border: 1px solid rgba(150, 52, 38, 0.28);
   border-radius: 6px;
@@ -792,6 +799,13 @@ button {
   line-height: 1;
 }
 
+.admin-user-line {
+  margin: 0.7rem 0 0;
+  color: rgba(23, 19, 15, 0.62);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
 .admin-nav nav {
   display: grid;
   gap: 0.35rem;
@@ -832,6 +846,17 @@ button {
   justify-content: space-between;
   gap: 1rem;
   padding: 1.1rem;
+}
+
+.admin-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  justify-content: flex-end;
+}
+
+.admin-heading-actions form {
+  margin: 0;
 }
 
 .admin-heading h2 {
@@ -1028,6 +1053,7 @@ button {
 
 .volunteers-layout,
 .donations-layout,
+.users-layout,
 .chronicle-layout {
   grid-template-columns: minmax(0, 1fr) minmax(360px, 0.74fr);
 }
@@ -1118,6 +1144,59 @@ button {
   max-width: 980px;
 }
 
+.settings-external-link {
+  justify-self: start;
+}
+
+.admin-login-page,
+.auth-page {
+  display: grid;
+  min-height: calc(100vh - 5.25rem);
+  place-items: center;
+  padding: 2rem 0 4rem;
+}
+
+.admin-login-card,
+.auth-card {
+  display: grid;
+  width: min(100%, 460px);
+  gap: 0.9rem;
+  padding: 1.35rem;
+}
+
+.admin-login-card h1,
+.auth-card h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.admin-login-card p,
+.auth-card p {
+  color: rgba(23, 19, 15, 0.72);
+  line-height: 1.6;
+}
+
+.admin-login-card label,
+.auth-card label {
+  display: grid;
+  gap: 0.36rem;
+  color: rgba(23, 19, 15, 0.76);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.admin-login-card input,
+.auth-card input {
+  width: 100%;
+  border: 1px solid rgba(58, 45, 31, 0.24);
+  border-radius: 6px;
+  background: rgba(255, 248, 230, 0.78);
+  color: var(--ink);
+  padding: 0.72rem 0.8rem;
+}
+
 .admin-map-frame {
   position: relative;
   overflow: hidden;
@@ -1158,6 +1237,7 @@ button {
   .slots-layout,
   .volunteers-layout,
   .donations-layout,
+  .users-layout,
   .chronicle-layout {
     grid-template-columns: 1fr;
   }

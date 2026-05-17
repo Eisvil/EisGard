@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { BarChart3, Boxes, HeartHandshake, ListChecks, Map, ScrollText, Settings, UsersRound } from "lucide-react";
+import { BarChart3, Boxes, HeartHandshake, ListChecks, LogOut, Map, ScrollText, Settings, UserCog, UsersRound } from "lucide-react";
+import { requireAdminPageAccess } from "@/lib/auth/admin";
 
 const adminLinks = [
   { href: "/admin", label: "Дашборд", icon: BarChart3 },
@@ -8,6 +9,7 @@ const adminLinks = [
   { href: "/admin/donations", label: "Донаты", icon: HeartHandshake },
   { href: "/admin/map", label: "Карта", icon: Map },
   { href: "/admin/volunteers", label: "Волонтеры", icon: UsersRound },
+  { href: "/admin/users", label: "Пользователи", icon: UserCog },
   { href: "/admin/chronicle", label: "Летопись", icon: ScrollText },
   { href: "/admin/settings", label: "Настройки", icon: Settings }
 ];
@@ -18,13 +20,16 @@ type AdminShellProps = {
   children: React.ReactNode;
 };
 
-export function AdminShell({ title, description, children }: AdminShellProps) {
+export async function AdminShell({ title, description, children }: AdminShellProps) {
+  const access = await requireAdminPageAccess();
+
   return (
     <main className="admin-page shell">
       <aside className="admin-nav" aria-label="Административная навигация">
         <div>
           <p className="eyebrow">Админка</p>
           <h1>Конструктор городища</h1>
+          <p className="admin-user-line">{access.email} · {access.role}</p>
         </div>
         <nav>
           {adminLinks.map((link) => {
@@ -47,9 +52,17 @@ export function AdminShell({ title, description, children }: AdminShellProps) {
             <h2>{title}</h2>
             <p>{description}</p>
           </div>
-          <Link href="/" className="secondary-button">
-            На публичную карту
-          </Link>
+          <div className="admin-heading-actions">
+            <Link href="/" className="secondary-button">
+              На публичную карту
+            </Link>
+            <form action="/auth/sign-out" method="post">
+              <button className="secondary-button" type="submit">
+                <LogOut size={17} />
+                Выйти
+              </button>
+            </form>
+          </div>
         </header>
         {children}
       </section>

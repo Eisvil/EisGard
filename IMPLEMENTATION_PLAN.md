@@ -8,6 +8,20 @@
 - Все данные, которые администратор должен менять, выносим в БД.
 - Не строим статичный лендинг вместо платформы.
 
+## Текущий прогресс
+
+- Supabase project подключен, миграция и seed применены.
+- Публичная карта, страницы зданий, летопись, форма доната и форма волонтера читают данные через Supabase adapter с seed fallback.
+- Админские PATCH routes для зданий, слотов, маркеров, летописи, донатов и волонтеров работают через server-side service role client.
+- `POST /api/donations` создает реальный `pending` donation; переход в `paid` проверен через admin route, повторный `paid` идемпотентен.
+- `POST /api/volunteer-applications` создает реальную заявку; начисление часов проверено через admin route и не создает дублей для одной заявки.
+- Админка настроек умеет хранить ручной платежный режим `tbank_collection_manual` и публичную ссылку на Т-Банк Сборы.
+- `.env.example` содержит полный набор server env для будущего подключения ЮKassa.
+- `/admin` защищен Supabase Auth, `profiles.role` и bootstrap-настройкой `ADMIN_BOOTSTRAP_EMAILS`; admin API routes также требуют роль до service-role действий.
+- Добавлены пользовательские `/auth/login` и `/auth/register`.
+- Добавлена админская страница `/admin/users` для назначения статусов `participant`, `moderator`, `admin`; `moderator` не имеет доступа к админке.
+- Следующий крупный блок: полноценная ЮKassa-интеграция с create-payment и webhook.
+
 ## Этап 0. Подготовка
 
 Результат: проект готов к разработке.

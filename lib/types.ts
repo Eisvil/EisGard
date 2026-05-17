@@ -56,6 +56,36 @@ export type VolunteerApplication = {
   createdAt: string;
 };
 
+export type PaymentProviderPreference = "mock" | "tbank_collection_manual" | "yookassa";
+
+export type UserRole = "participant" | "moderator" | "editor" | "admin" | "superadmin";
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  name: string;
+  phone: string;
+  role: UserRole;
+  points: number;
+  publicName: string;
+  createdAt: string;
+};
+
+export type ProjectSettings = {
+  projectName: string;
+  legalName: string;
+  contactEmail: string;
+  telegramAdminChat: string;
+  donationTerms: string;
+  privacyPolicy: string;
+  paymentProviderPreference: PaymentProviderPreference;
+  tbankCollectionEnabled: boolean;
+  tbankCollectionUrl: string;
+  tbankCollectionTitle: string;
+  tbankCollectionDescription: string;
+  yookassaEnabled: boolean;
+};
+
 export type Building = {
   slug: string;
   title: string;

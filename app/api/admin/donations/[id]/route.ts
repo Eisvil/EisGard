@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/admin";
 import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import type { DonationStatus } from "@/lib/types";
 
@@ -13,6 +14,12 @@ type RouteContext = {
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const guard = await requireAdminApiAccess();
+
+  if (guard.response) {
+    return guard.response;
+  }
+
   const { id } = await context.params;
   const payload = (await request.json()) as DonationPatchPayload;
 
@@ -52,6 +59,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       donor_name,
       public_name,
       publish_name,
+      paid_at,
       building_id,
       item_id,
       buildings(title),
@@ -67,6 +75,25 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   const wasPaid = currentDonation.status === "paid";
   const willBePaid = payload.status === "paid";
+
+  if (wasPaid && willBePaid) {
+    return NextResponse.json({
+      ok: true,
+      mode: "supabase",
+      donation: {
+        id: currentDonation.id,
+        status: currentDonation.status,
+        paid_at: currentDonation.paid_at
+      }
+    });
+  }
+
+  if (wasPaid && !willBePaid) {
+    return NextResponse.json(
+      { ok: false, message: "Paid donations require a refund workflow before status changes." },
+      { status: 409 }
+    );
+  }
 
   const { data: donation, error } = await supabase
     .from("donations")

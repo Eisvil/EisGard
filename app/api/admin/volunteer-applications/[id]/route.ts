@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/admin";
 import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 import type { VolunteerStatus } from "@/lib/types";
 
@@ -15,6 +16,12 @@ type RouteContext = {
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const guard = await requireAdminApiAccess();
+
+  if (guard.response) {
+    return guard.response;
+  }
+
   const { id } = await context.params;
   const payload = (await request.json()) as VolunteerPatchPayload;
 
@@ -67,28 +74,59 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (payload.hours && payload.hours > 0) {
     const points = payload.hours * 5;
 
-    const { data: hoursEntry } = await supabase
+    const { data: existingHours, error: existingHoursError } = await supabase
       .from("volunteer_hours")
-      .insert({
-        application_id: currentApplication.id,
-        user_id: currentApplication.user_id,
-        building_id: currentApplication.building_id,
-        hours: payload.hours,
-        points,
-        comment: payload.comment ?? null
-      })
       .select("id")
-      .single();
+      .eq("application_id", currentApplication.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
-    await supabase.from("chronicle_entries").insert({
-      type: "volunteer_hours",
+    if (existingHoursError) {
+      return NextResponse.json({ ok: false, message: existingHoursError.message }, { status: 500 });
+    }
+
+    const hoursPayload = {
+      application_id: currentApplication.id,
+      user_id: currentApplication.user_id,
       building_id: currentApplication.building_id,
-      volunteer_hours_id: hoursEntry?.id,
+      hours: payload.hours,
+      points,
+      comment: payload.comment ?? null
+    };
+
+    const { data: hoursEntry, error: hoursError } = existingHours
+      ? await supabase
+          .from("volunteer_hours")
+          .update(hoursPayload)
+          .eq("id", existingHours.id)
+          .select("id")
+          .single()
+      : await supabase.from("volunteer_hours").insert(hoursPayload).select("id").single();
+
+    if (hoursError) {
+      return NextResponse.json({ ok: false, message: hoursError.message }, { status: 500 });
+    }
+
+    const chroniclePayload = {
+      type: "volunteer_hours" as const,
+      building_id: currentApplication.building_id,
+      volunteer_hours_id: hoursEntry.id,
       text: `зачислил(а) ${payload.hours} волонтерских часов`,
       public_name: currentApplication.name,
       hours: payload.hours,
       is_visible: true
-    });
+    };
+
+    if (existingHours) {
+      await supabase
+        .from("chronicle_entries")
+        .update(chroniclePayload)
+        .eq("volunteer_hours_id", hoursEntry.id)
+        .eq("type", "volunteer_hours");
+    } else {
+      await supabase.from("chronicle_entries").insert(chroniclePayload);
+    }
   }
 
   return NextResponse.json({ ok: true, mode: "supabase", application });

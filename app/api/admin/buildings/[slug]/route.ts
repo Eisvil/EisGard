@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/admin";
 import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 type BuildingPatchPayload = {
@@ -19,6 +20,12 @@ type RouteContext = {
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const guard = await requireAdminApiAccess();
+
+  if (guard.response) {
+    return guard.response;
+  }
+
   const { slug } = await context.params;
   const payload = (await request.json()) as BuildingPatchPayload;
 
@@ -67,4 +74,3 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   return NextResponse.json({ ok: true, mode: "supabase", building: data });
 }
-

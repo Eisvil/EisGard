@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/admin";
 import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 type ChroniclePatchPayload = {
@@ -15,6 +16,12 @@ type RouteContext = {
 };
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const guard = await requireAdminApiAccess();
+
+  if (guard.response) {
+    return guard.response;
+  }
+
   const { id } = await context.params;
   const payload = (await request.json()) as ChroniclePatchPayload;
 

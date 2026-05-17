@@ -1,7 +1,25 @@
 import { adminDonations, buildings, chronicleEntries, volunteerApplications } from "./seed";
 import { getSupabaseClient } from "./supabase/client";
-import { mapAdminDonation, mapBuilding, mapChronicleEntry, mapVolunteerApplication } from "./supabase/mappers";
-import type { AdminDonation, Building, ChronicleEntry, VolunteerApplication } from "./types";
+import { mapAdminDonation, mapBuilding, mapChronicleEntry, mapProjectSettings, mapVolunteerApplication } from "./supabase/mappers";
+import type { AdminDonation, Building, ChronicleEntry, ProjectSettings, VolunteerApplication } from "./types";
+
+const fallbackProjectSettings: ProjectSettings = {
+  projectName: "Живое Городище",
+  legalName: "НКО / фонд будет указан позже",
+  contactEmail: "info@example.ru",
+  telegramAdminChat: "служебный чат не подключен",
+  donationTerms:
+    "Пожертвование является добровольным вкладом в строительство выбранного объекта. Публичное имя отображается только при согласии участника.",
+  privacyPolicy:
+    "Персональные данные используются для подтверждения вклада, связи с участником и ведения цифровой летописи проекта.",
+  paymentProviderPreference: "mock",
+  tbankCollectionEnabled: false,
+  tbankCollectionUrl: "",
+  tbankCollectionTitle: "Сбор Т-Банка",
+  tbankCollectionDescription:
+    "Внешняя ссылка на сбор денег в Т-Банке. После оплаты администратор подтверждает вклад вручную.",
+  yookassaEnabled: false
+};
 
 function warnAndFallback(scope: string, error: unknown) {
   if (process.env.NODE_ENV !== "production") {
@@ -224,5 +242,46 @@ export async function getVolunteerApplications(): Promise<VolunteerApplication[]
       return (data ?? []).map(mapVolunteerApplication);
     },
     volunteerApplications
+  );
+}
+
+export async function getProjectSettings(): Promise<ProjectSettings> {
+  return trySupabase(
+    "getProjectSettings",
+    async () => {
+      const supabase = getSupabaseClient();
+
+      if (!supabase) {
+        return fallbackProjectSettings;
+      }
+
+      const { data, error } = await supabase
+        .from("project_settings")
+        .select(
+          `
+          project_name,
+          legal_name,
+          contact_email,
+          telegram_admin_chat,
+          donation_terms,
+          privacy_policy,
+          payment_provider_preference,
+          tbank_collection_enabled,
+          tbank_collection_url,
+          tbank_collection_title,
+          tbank_collection_description,
+          yookassa_enabled
+        `
+        )
+        .eq("id", "main")
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      return mapProjectSettings(data);
+    },
+    fallbackProjectSettings
   );
 }

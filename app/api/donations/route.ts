@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 type DonationPayload = {
   buildingSlug?: string;
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return badRequest("amount must be positive");
   }
 
-  if (!isSupabaseConfigured()) {
+  if (!isSupabaseAdminConfigured()) {
     return NextResponse.json({
       ok: true,
       mode: "mock",
@@ -56,10 +56,10 @@ export async function POST(request: Request) {
     });
   }
 
-  const supabase = getSupabaseClient();
+  const supabase = getSupabaseAdminClient();
 
   if (!supabase) {
-    return NextResponse.json({ ok: false, message: "Supabase client is not configured" }, { status: 500 });
+    return NextResponse.json({ ok: false, message: "Supabase admin client is not configured" }, { status: 500 });
   }
 
   const { data: building, error: buildingError } = await supabase
@@ -110,4 +110,3 @@ export async function POST(request: Request) {
     donation
   });
 }
-

@@ -1,5 +1,14 @@
 import type { IconName } from "@/lib/icons";
-import type { AdminDonation, Building, BuildingStatus, BuildingZone, ChronicleEntry, DonationSlot, VolunteerApplication } from "@/lib/types";
+import type {
+  AdminDonation,
+  Building,
+  BuildingStatus,
+  BuildingZone,
+  ChronicleEntry,
+  DonationSlot,
+  ProjectSettings,
+  VolunteerApplication
+} from "@/lib/types";
 
 type CollectionItemRow = {
   id: string;
@@ -99,6 +108,21 @@ type VolunteerApplicationRow = {
     hours: number;
     points: number;
   }>;
+};
+
+export type ProjectSettingsRow = {
+  project_name: string | null;
+  legal_name: string | null;
+  contact_email: string | null;
+  telegram_admin_chat: string | null;
+  donation_terms: string | null;
+  privacy_policy: string | null;
+  payment_provider_preference: ProjectSettings["paymentProviderPreference"] | null;
+  tbank_collection_enabled: boolean | null;
+  tbank_collection_url: string | null;
+  tbank_collection_title: string | null;
+  tbank_collection_description: string | null;
+  yookassa_enabled: boolean | null;
 };
 
 const fallbackIcon: IconName = "Home";
@@ -217,5 +241,28 @@ export function mapVolunteerApplication(row: VolunteerApplicationRow): Volunteer
     hours: totalHours,
     points: totalPoints,
     createdAt: formatTime(row.created_at)
+  };
+}
+
+export function mapProjectSettings(row: ProjectSettingsRow): ProjectSettings {
+  return {
+    projectName: row.project_name ?? "Живое Городище",
+    legalName: row.legal_name ?? "НКО / фонд будет указан позже",
+    contactEmail: row.contact_email ?? "info@example.ru",
+    telegramAdminChat: row.telegram_admin_chat ?? "служебный чат не подключен",
+    donationTerms:
+      row.donation_terms ??
+      "Пожертвование является добровольным вкладом в строительство выбранного объекта. Публичное имя отображается только при согласии участника.",
+    privacyPolicy:
+      row.privacy_policy ??
+      "Персональные данные используются для подтверждения вклада, связи с участником и ведения цифровой летописи проекта.",
+    paymentProviderPreference: row.payment_provider_preference ?? "mock",
+    tbankCollectionEnabled: row.tbank_collection_enabled ?? false,
+    tbankCollectionUrl: row.tbank_collection_url ?? "",
+    tbankCollectionTitle: row.tbank_collection_title ?? "Сбор Т-Банка",
+    tbankCollectionDescription:
+      row.tbank_collection_description ??
+      "Внешняя ссылка на сбор денег в Т-Банке. После оплаты администратор подтверждает вклад вручную.",
+    yookassaEnabled: row.yookassa_enabled ?? false
   };
 }

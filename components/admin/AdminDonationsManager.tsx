@@ -190,14 +190,16 @@ export function AdminDonationsManager({ initialDonations }: AdminDonationsManage
         <div className="admin-actions-row">
           <button className="primary-button" type="button" onClick={() => patchDonationStatus("paid")} disabled={isSaving}>
             <CheckCircle2 size={16} />
-            {isSaving ? "Сохраняем..." : "Подтвердить webhook"}
+            {isSaving ? "Сохраняем..." : "Подтвердить оплату"}
           </button>
           <button className="secondary-button" type="button" onClick={() => patchDonationStatus("pending")} disabled={isSaving}>
             <RefreshCw size={16} />
             Вернуть pending
           </button>
         </div>
-        <div className="admin-muted-line">В реальной версии только webhook ЮKassa переводит платеж в `paid`.</div>
+        <div className="admin-muted-line">
+          В автоматическом сценарии `paid` ставит webhook ЮKassa. Для Т-Банк Сборов это ручное подтверждение после сверки поступления.
+        </div>
       </aside>
     </div>
   );

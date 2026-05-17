@@ -12,7 +12,7 @@
 ## 2. Enum-типы
 
 ```sql
-create type user_role as enum ('participant', 'editor', 'admin', 'superadmin');
+create type user_role as enum ('participant', 'moderator', 'editor', 'admin', 'superadmin');
 create type building_zone as enum ('craft', 'public', 'residential', 'household', 'sacred');
 create type building_status as enum ('idea', 'fundraising', 'building', 'finishing', 'active', 'archived');
 create type collection_item_status as enum ('available', 'reserved', 'funded', 'hidden');
@@ -41,6 +41,8 @@ create table profiles (
   updated_at timestamptz not null default now()
 );
 ```
+
+Новые пользователи Supabase Auth автоматически получают строку в `profiles` через trigger `on_auth_user_created_profile`, который вызывает `private.handle_new_user_profile()`.
 
 Индексы:
 
@@ -360,6 +362,38 @@ create index admin_audit_log_entity_idx on admin_audit_log(entity_type, entity_i
 create index admin_audit_log_created_idx on admin_audit_log(created_at desc);
 ```
 
+### `project_settings`
+
+Singleton-настройки проекта, платежных режимов и юридических текстов.
+
+```sql
+create table project_settings (
+  id text primary key default 'main',
+  project_name text not null,
+  legal_name text not null,
+  contact_email text not null,
+  telegram_admin_chat text not null,
+  donation_terms text not null,
+  privacy_policy text not null,
+  payment_provider_preference text not null,
+  tbank_collection_enabled boolean not null default false,
+  tbank_collection_url text,
+  tbank_collection_title text not null,
+  tbank_collection_description text not null,
+  yookassa_enabled boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
+Правила:
+
+- в таблице хранится только строка `id = 'main'`;
+- ссылка на Т-Банк Сборы публичная, секретов в таблице нет;
+- секреты ЮKassa хранятся только в server env;
+- публичный сайт может читать настройки;
+- админские изменения идут через server-side API.
+
 ## 4. Расчет прогресса
 
 Для здания:
@@ -504,4 +538,3 @@ progress = collected_amount / target_amount * 100
 - Кровля;
 - Насесты;
 - Кормушки.
-

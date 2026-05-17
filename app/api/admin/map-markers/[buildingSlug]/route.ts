@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminApiAccess } from "@/lib/auth/admin";
 import { getSupabaseAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/admin";
 
 type MarkerPatchPayload = {
@@ -17,6 +18,12 @@ function isPercent(value: number | undefined) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
+  const guard = await requireAdminApiAccess();
+
+  if (guard.response) {
+    return guard.response;
+  }
+
   const { buildingSlug } = await context.params;
   const payload = (await request.json()) as MarkerPatchPayload;
 
@@ -72,4 +79,3 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   return NextResponse.json({ ok: true, mode: "supabase", marker: data });
 }
-
