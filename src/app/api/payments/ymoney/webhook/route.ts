@@ -1,0 +1,126 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceSupabaseClient } from '@/lib/supabase/server';
+import { verifyWebhookSignature } from '@/lib/payments/ymoney';
+import { awardPoints } from '@/lib/points/awardPoints';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyClient = any;
+
+const OK = () => new NextResponse(null, { status: 200 });
+
+type DonationRow = {
+  id: string;
+  user_id: string | null;
+  object_id: string | null;
+  slot_id: string | null;
+  status: string;
+  is_anonymous: boolean;
+  display_name: string;
+  subscription_id: string | null;
+};
+
+type SettingRow = { value: unknown };
+
+export async function POST(request: NextRequest) {
+  const text = await request.text();
+  const params = Object.fromEntries(new URLSearchParams(text)) as Record<string, string>;
+
+  const {
+    notification_type = '',
+    operation_id = '',
+    amount = '',
+    currency = '',
+    datetime = '',
+    sender = '',
+    codepro = '',
+    label = '',
+    sha1_hash = '',
+  } = params;
+
+  const secret = process.env.YMONEY_NOTIFICATION_SECRET ?? '';
+  const valid = verifyWebhookSignature(
+    { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash },
+    secret
+  );
+
+  if (!valid) {
+    console.warn('[ymoney webhook] invalid SHA-1, operation_id:', operation_id);
+    return OK();
+  }
+
+  if (!label) return OK();
+
+  const supabase = (await createServiceSupabaseClient()) as AnyClient;
+
+  const { data: donation } = await supabase
+    .from('donations')
+    .select('id, user_id, object_id, slot_id, status, is_anonymous, display_name, subscription_id')
+    .eq('id', label)
+    .maybeSingle() as { data: DonationRow | null };
+
+  if (!donation) return OK();
+  if (donation.status === 'confirmed') return OK();
+
+  const amountKopecks = Math.round(parseFloat(amount) * 100);
+
+  await supabase.from('donations').update({
+    status: 'confirmed',
+    ymoney_operation_id: operation_id,
+    confirmed_at: new Date().toISOString(),
+    amount_kopecks: amountKopecks,
+  }).eq('id', donation.id);
+
+  const { data: settingRow } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'points_per_ruble')
+    .maybeSingle() as { data: SettingRow | null };
+
+  const ppr = Number(settingRow?.value ?? 1);
+  const pts = Math.floor((amountKopecks / 100) * ppr);
+
+  if (donation.user_id && pts > 0) {
+    await awardPoints(donation.user_id, pts);
+    await supabase.from('donations').update({ points_awarded: pts }).eq('id', donation.id);
+  }
+
+  if (donation.slot_id) {
+    await supabase.rpc('increment_slot_value', {
+      p_slot_id: donation.slot_id,
+      p_value: amountKopecks,
+    });
+  }
+
+  if (donation.object_id) {
+    await supabase.rpc('increment_object_raised', {
+      p_object_id: donation.object_id,
+      p_value: amountKopecks,
+    });
+  }
+
+  await supabase.from('chronicle_events').insert({
+    event_type: 'donation',
+    user_id: donation.user_id ?? null,
+    object_id: donation.object_id ?? null,
+    display_name: donation.is_anonymous ? 'Аноним' : (donation.display_name || 'Участник'),
+    is_anonymous: donation.is_anonymous,
+    amount_kopecks: amountKopecks,
+    points: pts > 0 ? pts : null,
+  });
+
+  // Если платёж связан с подпиской — активируем её и сохраняем токен если пришёл
+  if (donation.subscription_id) {
+    const token = params['token'] ?? '';
+    await supabase
+      .from('subscriptions')
+      .update({
+        status: 'active',
+        last_payment_date: new Date().toISOString().slice(0, 10),
+        ...(token ? { ymoney_token: token } : {}),
+      })
+      .eq('id', donation.subscription_id)
+      .eq('status', 'pending');
+  }
+
+  return OK();
+}

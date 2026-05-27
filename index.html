@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Живое Городище - карта поселения</title>
+    <link rel="icon" type="image/png" href="Референсы/Логотип.png">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="paper-glow" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#" aria-label="Живое Городище">
+          <img src="Референсы/Логотип.png" alt="">
+          <span class="brand-name">Живое<br>Городище</span>
+        </a>
+
+        <nav class="navigation" aria-label="Основная навигация">
+          <a class="active" href="#">Карта поселения</a>
+          <a href="#chronicle">Летопись</a>
+          <a href="#support">Волонтёрам</a>
+          <a href="#">Материалы</a>
+          <a href="#about">О проекте</a>
+        </nav>
+
+        <div class="header-actions">
+          <button class="primary-button header-join" type="button"><span class="join-long">Стать участником</span><span class="join-short">Участвовать</span></button>
+        </div>
+      </div>
+    </header>
+
+    <main class="dashboard">
+      <aside class="feature panel" aria-label="Выбранный объект">
+        <p class="eyebrow"><span></span> Объект городища <span></span></p>
+        <h1 id="selected-name">Кузница</h1>
+        <p class="selected-zone" id="selected-zone">Ремесленная зона</p>
+        <img class="selected-photo" id="selected-photo" src="Референсы/Кузница.png" alt="Кузница">
+        <p class="selected-description" id="selected-description">Сердце ремесленной жизни поселения. Здесь будет коваться железо, рождаться инструмент и оружие наших предков.</p>
+
+        <div class="progress-heading">
+          <span>Прогресс объекта</span>
+          <strong id="selected-percent">68%</strong>
+        </div>
+        <div class="progress"><span id="selected-bar" style="width:68%"></span></div>
+        <p class="money"><strong id="selected-raised">136 000 ₽</strong> / <span id="selected-goal">200 000 ₽</span></p>
+        <button class="primary-button donate" type="button" data-support>Поддержать объект</button>
+      </aside>
+
+      <section class="settlement-map" aria-label="Интерактивная карта поселения">
+        <div class="map-canvas" id="map-canvas">
+          <img src="Референсы/Большая карта.png" alt="Иллюстрированная карта городища с постройками" id="map-image">
+          <section class="player-hud" aria-label="Профиль участника">
+            <div class="player-avatar" aria-hidden="true">
+              <svg viewBox="0 0 44 44">
+                <path class="avatar-bg" d="M22 2a20 20 0 1 1 0 40 20 20 0 0 1 0-40Z"/>
+                <path class="avatar-face" d="M22 9.2c4.1 0 6.5 3.2 6.5 7.5 0 3.5-1.8 6.6-4.5 7.6l1.1 3.1 6.9 3.8v5.1H12v-5.1l6.9-3.8 1-3.1c-2.6-1.1-4.4-4.1-4.4-7.6 0-4.3 2.4-7.5 6.5-7.5Z"/>
+                <path class="avatar-coat" d="M13.1 36.4v-4.1l6.2-3.7 2.7 4.1 2.7-4.1 6.2 3.7v4.1H13.1Z"/>
+              </svg>
+            </div>
+            <div class="player-identity">
+              <strong>Эйсмонт Иван Александрович</strong>
+              <small>Витязь</small>
+            </div>
+            <div class="player-resources" aria-label="Ресурсы участника">
+              <span><b>★</b> 6 740 <small>баллов</small></span>
+              <span><b>♧</b> 0 <small>руб.</small></span>
+              <span><b>◷</b> 0 <small>ч</small></span>
+            </div>
+          </section>
+          <div class="hotspots" id="hotspots"></div>
+          <div class="zoom panel">
+            <button type="button" id="zoom-in" aria-label="Приблизить">+</button>
+            <button type="button" id="zoom-out" aria-label="Отдалить">−</button>
+          </div>
+          <ul class="legend panel" aria-label="Статусы объектов">
+            <li><span class="planned"></span>Замысел</li>
+            <li><span class="building"></span>Строится</li>
+            <li><span class="done"></span>Завершён</li>
+            <li><span class="working"></span>Действует</li>
+          </ul>
+        </div>
+      </section>
+
+      <aside class="right-rail">
+        <section class="stats panel" aria-label="Показатели проекта">
+          <h2>Строим вместе</h2>
+          <dl>
+            <div>
+              <dt class="icon" aria-hidden="true">
+                <svg viewBox="0 0 32 32"><path d="M16 13.5a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4ZM9.5 24v-3.1c0-3.1 2.9-5.2 6.5-5.2s6.5 2.1 6.5 5.2V24M7.5 12.2a3.1 3.1 0 1 0 0-6.2M7.5 15c-2.9 0-5 1.8-5 4.2v2.5h4.2M24.5 12.2a3.1 3.1 0 1 1 0-6.2M24.5 15c2.9 0 5 1.8 5 4.2v2.5h-4.2"/></svg>
+              </dt>
+              <dd><strong>1 248</strong><small>Участники проекта</small></dd>
+            </div>
+            <div>
+              <dt class="icon" aria-hidden="true">
+                <svg viewBox="0 0 32 32"><path d="M7 13h18v12H7zM9.5 13V9h13v4M5 25h22M11 17v4M16 17v4M21 17v4"/><path class="icon-detail" d="M13 8c0-2 1.6-3.5 3-3.5S19 6 19 8"/></svg>
+              </dt>
+              <dd><strong>864 500 ₽</strong><small>Собрано средств</small></dd>
+            </div>
+            <div>
+              <dt class="icon" aria-hidden="true">
+                <svg viewBox="0 0 32 32"><path d="M10 4h12M10 28h12M11 5c0 6.2 5 6 5 11s-5 4.8-5 11M21 5c0 6.2-5 6-5 11s5 4.8 5 11"/><path class="icon-detail" d="M13 9h6l-3 4-3-4ZM13 24h6l-3-4-3 4Z"/></svg>
+              </dt>
+              <dd><strong>2 146 ч</strong><small>Волонтёрских часов</small></dd>
+            </div>
+            <div>
+              <dt class="icon" aria-hidden="true">
+                <svg viewBox="0 0 32 32"><path d="M4 15.5 16 5l12 10.5M7 13v13h18V13M13 26v-8h6v8"/><path class="icon-detail" d="M21 9V5h3v7"/></svg>
+              </dt>
+              <dd><strong>4</strong><small>Объектов построено</small></dd>
+            </div>
+          </dl>
+          <h3 class="rail-section-title">Летопись</h3>
+          <ul class="activity">
+            <li><b class="portrait p1"></b><span>Иван Петров<small>поддержал Кузницу<br><strong>5 000 ₽</strong></small></span><time>2 ч назад</time></li>
+            <li><b class="portrait p2"></b><span>Артем из Казани<small>поддержал Таверну<br><strong>+600 баллов</strong></small></span><time>5 ч назад</time></li>
+            <li><b class="portrait p3"></b><span>Мария Соколова<small>присоединилась к проекту</small></span><time>вчера</time></li>
+          </ul>
+          <button class="text-link full-link" type="button">Вся летопись <span>→</span></button>
+        </section>
+      </aside>
+
+      <section class="objects panel" aria-labelledby="objects-heading">
+        <div class="objects-header">
+          <h2 id="objects-heading">Объекты городища</h2>
+          <div class="filters" id="filters" aria-label="Фильтр зоны"></div>
+          <button class="text-link all-objects" type="button">Все объекты <span>→</span></button>
+        </div>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <section class="support panel" id="support" aria-labelledby="support-heading">
+        <h2 id="support-heading">Как поддержать</h2>
+        <div class="support-grid">
+          <button type="button" data-method="Финансовая поддержка"><b>♙</b><strong>Финансовая поддержка</strong><small>Разовый или ежемесячный вклад</small></button>
+          <button type="button" data-method="Материалы и инструменты"><b>⚒</b><strong>Материалы и инструменты</strong><small>Древесина, металл, инструменты и другое</small></button>
+          <button type="button" data-method="Волонтёрство"><b>♟</b><strong>Волонтёрство</strong><small>Помощь руками и участие в жизни</small></button>
+          <button type="button" data-method="Партнёрство"><b>◆</b><strong>Партнёрство</strong><small>Поддержка от бизнеса и организаций</small></button>
+        </div>
+      </section>
+
+      <section class="chronicle panel" id="chronicle" aria-labelledby="chronicle-heading">
+        <h2 id="chronicle-heading">Новости<br>городища</h2>
+        <article>
+          <img src="Референсы/Плодовые сады.png" alt="">
+          <div><time>12 мая 2024</time><h3>Посажены первые кедры</h3><p>Начали кедровую аллею. Пусть растут вместе с нами.</p><small>ЗЕМЛЯ И ДЕРЕВЬЯ</small></div>
+        </article>
+        <article>
+          <img src="Референсы/Общинный навес.png" alt="">
+          <div><time>18 мая 2024</time><h3>Выбрано место для навеса</h3><p>Очистили площадку у реки. Здесь будет наш первый общий адрес.</p><small>СТРОИТЕЛЬСТВО</small></div>
+        </article>
+        <article>
+          <img src="Референсы/священный дуб.png" alt="">
+          <div><time>21 мая 2024</time><h3>Сложили костровой круг</h3><p>Камни собраны со всего берега. Место, где будем собираться.</p><small>ОБЩИНА</small></div>
+        </article>
+        <article>
+          <img src="Референсы/Кузница.png" alt="">
+          <div><time>24 мая 2024</time><h3>Начат сруб кузницы</h3><p>Подготовлены брёвна и место для будущего горна.</p><small>РЕМЕСЛО</small></div>
+        </article>
+        <article>
+          <img src="Референсы/Колодец.png" alt="">
+          <div><time>26 мая 2024</time><h3>Найдено место для колодца</h3><p>Определили источник воды рядом с жилой частью.</p><small>БЛАГОУСТРОЙСТВО</small></div>
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="about">
+      <div class="footer-scene" aria-hidden="true"></div>
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <img src="Референсы/Логотип.png" alt="">
+          <strong>Живое<br>Городище</strong>
+          <div class="social" aria-label="Социальные сети">
+            <a href="#" aria-label="ВКонтакте">
+              <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M3.4 6.1h4.8c.3 5 2.3 7 3.8 7.4V6.1h4.5v4.2c1.5-.2 3.2-2.1 3.8-4.2h4.5c-.5 2.6-2.7 5-4.3 6 1.6.8 4.2 3 5.1 6.8h-5c-.7-2-2.2-3.6-4.1-3.9v3.9H16C8.1 18.9 3.6 13.7 3.4 6.1Z"/></svg>
+            </a>
+            <a href="#" aria-label="Телеграм">
+              <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M25.4 4.3 21.3 24c-.3 1.4-1.1 1.8-2.3 1.1l-6.3-4.7-3 2.9c-.3.3-.6.6-1.3.6l.5-6.4L20.5 7.2c.5-.5-.1-.8-.8-.3L5.4 15.8-.8 13.9c-1.3-.4-1.4-1.3.3-2l24.1-9.3c1.1-.4 2.1.3 1.8 1.7Z" transform="translate(1.6 .2)"/></svg>
+            </a>
+            <a href="#" aria-label="Ютуб">
+              <svg viewBox="0 0 28 28" aria-hidden="true"><path d="M25.1 8.3c-.3-1.4-1.5-2.5-2.9-2.9C19.8 4.8 14 4.8 14 4.8s-5.8 0-8.2.6C4.4 5.8 3.3 6.9 2.9 8.3c-.6 2.5-.6 5.7-.6 5.7s0 3.2.6 5.7c.4 1.4 1.5 2.5 2.9 2.9 2.4.6 8.2.6 8.2.6s5.8 0 8.2-.6c1.4-.4 2.6-1.5 2.9-2.9.6-2.5.6-5.7.6-5.7s0-3.2-.6-5.7Zm-13.7 9.4V10.3l6.5 3.7-6.5 3.7Z"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="principle"><b>◈</b><strong>Открытость</strong><p>Показываем процесс честно и без прикрас. Все решения - с вами.</p></div>
+        <div class="principle"><b>▤</b><strong>Историческая основа</strong><p>Изучаем быт и ремёсла XII-XIII веков Поволжской земли.</p></div>
+        <div class="principle"><b>♧</b><strong>Устойчивость</strong><p>Строим в гармонии с лесом и людьми. Не навсегда, а на пользу.</p></div>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

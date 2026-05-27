@@ -1,0 +1,436 @@
+@media (max-width: 1399px) {
+  .header-inner {
+    min-height: 142px;
+    padding-left: var(--page-gutter);
+    padding-right: var(--page-gutter);
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto 48px;
+  }
+
+  .navigation {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    height: 48px;
+  }
+
+  .header-actions {
+    justify-self: end;
+  }
+
+  .dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 0 var(--page-gutter) 20px;
+  }
+
+  .settlement-map {
+    order: -1;
+    margin: 0 calc(-1 * var(--page-gutter));
+  }
+
+  .map-canvas {
+    min-height: min(72vw, 690px);
+  }
+
+  .player-hud {
+    min-width: min(666px, calc(100% - 42px));
+    top: 20px;
+  }
+
+  .zoom {
+    top: 106px;
+    right: var(--page-gutter);
+  }
+
+  .feature,
+  .right-rail {
+    margin-top: 0;
+    align-self: stretch;
+  }
+
+  .feature {
+    min-height: 0;
+    padding: 20px 23px;
+  }
+
+  .selected-photo {
+    height: min(42vw, 330px);
+  }
+
+  .stats {
+    min-height: 0;
+  }
+
+  .stats dl {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+
+  .stats dl div {
+    border-bottom: 0;
+  }
+
+  .activity {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .object-card {
+    min-height: 345px;
+  }
+
+  .object-card img {
+    height: 234px;
+  }
+
+  .objects-header {
+    flex-wrap: wrap;
+    gap: 12px 22px;
+    margin-bottom: 13px;
+  }
+
+  .objects-header h2 {
+    margin-right: auto;
+  }
+
+  .filters {
+    order: 3;
+    flex: 0 0 100%;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .support-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .chronicle {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chronicle h2 {
+    grid-column: 1 / -1;
+  }
+
+  .footer-inner {
+    padding-left: var(--page-gutter);
+    padding-right: var(--page-gutter);
+    grid-template-columns: 280px repeat(3, 1fr);
+    gap: 22px;
+  }
+
+  .footer-scene {
+    opacity: .46;
+    background-size: auto 100%;
+  }
+}
+
+@media (max-width: 920px) and (min-width: 761px) {
+  .support-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --page-gutter: 14px;
+  }
+
+  body {
+    font-size: 15px;
+  }
+
+  .header-inner {
+    min-height: 126px;
+    padding-top: 12px;
+    gap: 10px 14px;
+  }
+
+  .brand {
+    gap: 9px;
+  }
+
+  .brand img {
+    width: 54px;
+    height: 54px;
+  }
+
+  .brand-name {
+    font-size: 25px;
+  }
+
+  .header-actions {
+    height: 46px;
+  }
+
+  .header-join {
+    min-width: 120px;
+    padding: 0 13px;
+    font-size: 15px;
+  }
+
+  .join-long {
+    display: none;
+  }
+
+  .join-short {
+    display: inline;
+  }
+
+  .navigation {
+    justify-content: flex-start;
+    gap: 25px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .navigation::-webkit-scrollbar {
+    display: none;
+  }
+
+  .navigation a {
+    font-size: 16px;
+  }
+
+  .map-canvas {
+    min-height: min(112vw, 510px);
+  }
+
+  .player-hud {
+    height: 60px;
+    min-width: calc(100% - 22px);
+    top: 10px;
+    gap: 8px;
+    padding: 5px 9px 5px 6px;
+  }
+
+  .player-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .player-identity {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+    padding-right: 7px;
+  }
+
+  .player-identity strong {
+    font-size: 13px;
+  }
+
+  .player-identity small {
+    font-size: 11px;
+  }
+
+  .player-resources {
+    gap: 7px;
+    font-size: 13px;
+  }
+
+  .player-resources span + span {
+    display: none;
+  }
+
+  .player-resources small {
+    display: none;
+  }
+
+  .zoom {
+    top: 82px;
+    right: 12px;
+    width: 40px;
+  }
+
+  .zoom button {
+    height: 39px;
+    font-size: 25px;
+  }
+
+  .hotspot {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hotspot-round {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hotspot-icon {
+    width: 21px;
+    height: 21px;
+  }
+
+  .hotspot-label {
+    min-height: 34px;
+    padding: 0 11px;
+    font-size: 13px;
+  }
+
+  .legend {
+    gap: 14px;
+    padding: 9px 13px;
+    font-size: 11px;
+  }
+
+  .legend li:nth-child(3),
+  .legend li:nth-child(4) {
+    display: none;
+  }
+
+  .feature h1 {
+    font-size: 31px;
+  }
+
+  .selected-photo {
+    height: min(66vw, 270px);
+  }
+
+  .stats dl,
+  .activity {
+    display: block;
+  }
+
+  .stats dl div {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stats dl div:last-child {
+    border-bottom: 0;
+  }
+
+  .activity li {
+    min-height: 57px;
+  }
+
+  .objects-header {
+    display: block;
+    margin-bottom: 12px;
+  }
+
+  .objects-header h2 {
+    margin-bottom: 10px;
+    font-size: 25px;
+  }
+
+  .filters {
+    overflow-x: auto;
+    margin-bottom: 8px;
+    scrollbar-width: none;
+  }
+
+  .filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .all-objects {
+    display: block;
+    margin-left: auto;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .object-card {
+    min-height: 300px;
+  }
+
+  .object-card img {
+    height: clamp(155px, 38vw, 240px);
+  }
+
+  .object-copy h3 {
+    font-size: 16px;
+  }
+
+  .support,
+  .chronicle {
+    padding: 14px;
+  }
+
+  .support h2 {
+    font-size: 25px;
+  }
+
+  .support-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .support-grid button {
+    min-height: 92px;
+  }
+
+  .chronicle {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chronicle h2 {
+    font-size: 25px;
+    padding-left: 0;
+  }
+
+  .chronicle article {
+    grid-template-columns: 98px 1fr;
+    gap: 12px;
+  }
+
+  .chronicle article img {
+    width: 98px;
+    height: 108px;
+  }
+
+  .footer-inner {
+    display: flex;
+    flex-direction: column;
+    padding: 20px var(--page-gutter) 25px;
+  }
+
+  .footer-scene {
+    top: 45%;
+    left: 0;
+    opacity: .24;
+    background-size: 100% auto;
+    background-position: right bottom;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, .35) 18%, #000 46%);
+    mask-image: linear-gradient(180deg, transparent 0%, rgba(0, 0, 0, .35) 18%, #000 46%);
+  }
+
+  .footer-brand img {
+    width: 62px;
+    height: 62px;
+  }
+
+  .footer-brand strong {
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 430px) {
+  .cards {
+    grid-template-columns: 1fr;
+  }
+
+  .object-card {
+    min-height: 330px;
+  }
+
+  .object-card img {
+    height: min(58vw, 235px);
+  }
+}

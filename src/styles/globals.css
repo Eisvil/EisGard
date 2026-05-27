@@ -1,0 +1,64 @@
+:root {
+  --paper: #fcf9f1;
+  --paper-strong: #fffdf8;
+  --ink: #484236;
+  --olive: #667643;
+  --olive-dark: #536333;
+  --olive-soft: #96a268;
+  --gold: #c9a64e;
+  --gold-soft: #eee2c1;
+  --line: #e6ddca;
+  --line-strong: #dbc9a4;
+  --shadow: 0 6px 20px rgba(80, 68, 43, .06);
+  --serif: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+  --sans: "Segoe UI", Arial, sans-serif;
+  --page-gutter: clamp(18px, 3vw, 44px);
+  --layout-gap: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 46% 0%, rgba(250, 243, 222, .5), transparent 36rem),
+    var(--paper);
+  font: 16px/1.5 var(--sans);
+}
+
+button,
+a {
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  font: inherit;
+}
+
+a {
+  text-decoration: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+.paper-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 30;
+  box-shadow: inset 0 0 70px rgba(218, 203, 166, .19);
+}

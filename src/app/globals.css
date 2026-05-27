@@ -1,0 +1,2 @@
+/* Root globals — minimal reset; Tailwind is imported only in (admin) layout */
+*, *::before, *::after { box-sizing: border-box; }
