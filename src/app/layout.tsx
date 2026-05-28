@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
+import { Lora } from "next/font/google";
 import "./globals.css";
+
+const lora = Lora({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-lora",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
 
 export const metadata: Metadata = {
   title: "Живое Городище",
@@ -12,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru">
+    <html lang="ru" className={lora.variable}>
       <body>{children}</body>
     </html>
   );

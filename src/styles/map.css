@@ -51,7 +51,7 @@
   border-radius: 38px;
   color: var(--ink);
   background: rgba(255, 253, 248, .93);
-  box-shadow: 0 5px 16px rgba(83, 99, 51, .15);
+  box-shadow: var(--shadow-md);
   backdrop-filter: blur(5px);
 }
 
@@ -91,24 +91,24 @@
 
 .player-identity strong {
   display: block;
-  color: #4d493d;
-  font: 700 18px/1.15 var(--serif);
+  color: var(--ink);
+  font: 700 var(--text-md)/1.15 var(--serif);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .player-identity small {
-  color: #766c57;
-  font-size: 13px;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
 }
 
 .player-resources {
   display: flex;
   align-items: center;
   gap: 17px;
-  color: #575043;
-  font: 17px var(--serif);
+  color: var(--ink);
+  font: var(--text-md) var(--serif);
   white-space: nowrap;
 }
 
@@ -119,12 +119,12 @@
 
 .player-resources b {
   color: var(--olive);
-  font-size: 17px;
+  font-size: var(--text-md);
 }
 
 .player-resources small {
-  color: #77705f;
-  font: 14px var(--serif);
+  color: var(--ink-soft);
+  font: var(--text-sm) var(--serif);
 }
 
 .hotspots {
@@ -189,8 +189,8 @@
   border-radius: 22px;
   color: var(--olive-dark);
   background: rgba(255, 253, 248, .98);
-  box-shadow: 0 3px 9px rgba(68, 53, 27, .12);
-  font: 700 16px/1 var(--serif);
+  box-shadow: var(--shadow-xs);
+  font: 700 var(--text-base)/1 var(--serif);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -244,7 +244,7 @@
   list-style: none;
   border-radius: 22px;
   background: rgba(255, 253, 248, .94);
-  font-size: 13px;
+  font-size: var(--text-sm);
   white-space: nowrap;
 }
 

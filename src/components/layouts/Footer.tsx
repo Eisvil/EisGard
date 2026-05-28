@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Eye, BookOpen, Leaf } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -27,17 +28,17 @@ export function Footer() {
           </div>
         </div>
         <div className="principle">
-          <b>◈</b>
+          <b><Eye size={28} strokeWidth={1.5} aria-hidden="true" /></b>
           <strong>Открытость</strong>
           <p>Показываем процесс честно и без прикрас. Все решения — с вами.</p>
         </div>
         <div className="principle">
-          <b>▤</b>
+          <b><BookOpen size={28} strokeWidth={1.5} aria-hidden="true" /></b>
           <strong>Историческая основа</strong>
           <p>Изучаем быт и ремёсла XII–XIII веков Поволжской земли.</p>
         </div>
         <div className="principle">
-          <b>♧</b>
+          <b><Leaf size={28} strokeWidth={1.5} aria-hidden="true" /></b>
           <strong>Устойчивость</strong>
           <p>Строим в гармонии с лесом и людьми. Не навсегда, а на пользу.</p>
         </div>

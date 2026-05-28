@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { Star, Coins, Clock, CreditCard, Package, Users, Handshake } from 'lucide-react';
 import { ObjectIcon } from '@/lib/constants/objectIcons';
 import { OBJECT_STATUS } from '@/lib/constants/objectStatus';
 import { ZONES, ZONE_LABELS, type ZoneKey } from '@/lib/constants/zones';
@@ -300,9 +301,9 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
               <small>{userProfile?.title ?? (userProfile ? 'Участник' : 'Войдите, чтобы участвовать')}</small>
             </div>
             <div className="player-resources" aria-label="Ресурсы участника">
-              <span><b>★</b> {userProfile ? userProfile.points.toLocaleString('ru') : '—'} <small>баллов</small></span>
-              <span><b>♧</b> {userProfile ? Math.round(userProfile.donated_kopecks / 100).toLocaleString('ru') : '—'} <small>руб.</small></span>
-              <span><b>◷</b> {userProfile ? userProfile.volunteer_days : '—'} <small>дн</small></span>
+              <span><b><Star size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile ? userProfile.points.toLocaleString('ru') : '—'} <small>баллов</small></span>
+              <span><b><Coins size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile ? Math.round(userProfile.donated_kopecks / 100).toLocaleString('ru') : '—'} <small>руб.</small></span>
+              <span><b><Clock size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile ? userProfile.volunteer_days : '—'} <small>дн</small></span>
             </div>
           </section>
 
@@ -499,16 +500,16 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
         <h2 id="support-heading">Как поддержать</h2>
         <div className="support-grid">
           <button type="button" onClick={() => showToast('Направление: Финансовая поддержка')}>
-            <b>♙</b><strong>Финансовая поддержка</strong><small>Разовый или ежемесячный вклад</small>
+            <b><CreditCard size={28} strokeWidth={1.5} aria-hidden="true" /></b><strong>Финансовая поддержка</strong><small>Разовый или ежемесячный вклад</small>
           </button>
           <button type="button" onClick={() => showToast('Направление: Материалы и инструменты')}>
-            <b>⚒</b><strong>Материалы и инструменты</strong><small>Древесина, металл, инструменты и другое</small>
+            <b><Package size={28} strokeWidth={1.5} aria-hidden="true" /></b><strong>Материалы и инструменты</strong><small>Древесина, металл, инструменты и другое</small>
           </button>
           <button type="button" onClick={() => showToast('Направление: Волонтёрство')}>
-            <b>♟</b><strong>Волонтёрство</strong><small>Помощь руками и участие в жизни</small>
+            <b><Users size={28} strokeWidth={1.5} aria-hidden="true" /></b><strong>Волонтёрство</strong><small>Помощь руками и участие в жизни</small>
           </button>
           <button type="button" onClick={() => showToast('Направление: Партнёрство')}>
-            <b>◆</b><strong>Партнёрство</strong><small>Поддержка от бизнеса и организаций</small>
+            <b><Handshake size={28} strokeWidth={1.5} aria-hidden="true" /></b><strong>Партнёрство</strong><small>Поддержка от бизнеса и организаций</small>
           </button>
         </div>
       </section>

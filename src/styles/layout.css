@@ -57,8 +57,8 @@
   display: flex;
   position: relative;
   align-items: center;
-  color: #514c43;
-  font: 18px var(--serif);
+  color: var(--ink-soft);
+  font: var(--text-md) var(--serif);
   white-space: nowrap;
 }
 
@@ -128,15 +128,15 @@
 
 .feature h1 {
   color: var(--olive-dark);
-  font: 35px var(--serif);
+  font: var(--text-3xl) var(--serif);
   font-weight: 700;
   line-height: 1.1;
 }
 
 .selected-zone {
   margin: 4px 0 15px;
-  color: #777064;
-  font-size: 14px;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
 }
 
 .selected-photo {
@@ -150,9 +150,9 @@
 
 .selected-description {
   min-height: 68px;
-  color: #6e675c;
-  font-size: 14px;
-  line-height: 1.5;
+  color: var(--ink-soft);
+  font-size: var(--text-sm);
+  line-height: 1.6;
 }
 
 .progress-heading {
@@ -208,7 +208,7 @@
 .support h2 {
   margin-bottom: 13px;
   color: var(--olive-dark);
-  font: 27px var(--serif);
+  font: var(--text-3xl) var(--serif);
 }
 
 .stats dl {
@@ -255,18 +255,18 @@
 
 .stats strong {
   display: block;
-  color: #514c43;
-  font: 22px var(--serif);
+  color: var(--ink-soft);
+  font: var(--text-2xl) var(--serif);
 }
 
 .stats small {
-  color: #827a6b;
-  font-size: 13px;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
 }
 
 .stats h3 {
   color: var(--olive-dark);
-  font: 24px var(--serif);
+  font: var(--text-2xl) var(--serif);
 }
 
 .rail-section-title {
@@ -313,22 +313,22 @@
 
 .activity small {
   display: block;
-  color: #7c7569;
+  color: var(--ink-soft);
   line-height: 1.32;
 }
 
 .activity small strong {
   display: inline;
-  color: #5d584e;
-  font: 13px var(--sans);
+  color: var(--ink-soft);
+  font: var(--text-sm) var(--sans);
 }
 
 .activity time {
   position: absolute;
   right: 0;
   top: 1px;
-  color: #898376;
-  font-size: 12px;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
 }
 
 .objects {
@@ -347,7 +347,7 @@
 .objects-header h2,
 .chronicle h2 {
   color: var(--olive-dark);
-  font: 27px var(--serif);
+  font: var(--text-3xl) var(--serif);
   font-weight: 700;
   white-space: nowrap;
 }
@@ -362,9 +362,9 @@
   border: 1px solid transparent;
   border-radius: 20px;
   padding: 8px clamp(10px, .75vw, 15px);
-  color: #665f54;
+  color: var(--ink-soft);
   background: transparent;
-  font-size: 13px;
+  font-size: var(--text-sm);
   white-space: nowrap;
 }
 
@@ -425,9 +425,9 @@
 
 .support-grid b {
   grid-row: 1 / 3;
-  color: #a79d75;
-  font-size: 34px;
-  line-height: 42px;
+  display: flex;
+  align-items: center;
+  color: var(--olive-soft);
 }
 
 .support-grid strong {
@@ -436,9 +436,9 @@
 }
 
 .support-grid small {
-  color: #827a6e;
-  font-size: 13px;
-  line-height: 1.38;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  line-height: 1.4;
 }
 
 .chronicle {
@@ -470,8 +470,8 @@
 }
 
 .chronicle time {
-  color: #9a927f;
-  font-size: 10px;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
 }
 
 .chronicle article h3 {
@@ -480,7 +480,7 @@
 
 .chronicle article p {
   margin-top: 4px;
-  color: #716a60;
+  color: var(--ink-soft);
   font-size: 11px;
 }
 
@@ -555,7 +555,7 @@
 
 .footer-brand strong {
   color: var(--olive-dark);
-  font: 32px/.96 var(--serif);
+  font: var(--text-4xl)/.96 var(--serif);
 }
 
 .social {
@@ -597,16 +597,18 @@
 
 .principle b {
   grid-row: 1 / 3;
-  color: #a29b67;
-  font-size: 31px;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 3px;
+  color: var(--olive-soft);
 }
 
 .principle strong {
-  font: 700 16px var(--serif);
+  font: 700 var(--text-base) var(--serif);
 }
 
 .principle p {
-  color: #6e685e;
-  font-size: 12px;
-  line-height: 1.48;
+  color: var(--ink-soft);
+  font-size: var(--text-xs);
+  line-height: 1.5;
 }

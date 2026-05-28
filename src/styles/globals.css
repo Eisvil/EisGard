@@ -1,4 +1,5 @@
 :root {
+  /* ── Palette ─────────────────────────────────────────────────────────── */
   --paper: #fcf9f1;
   --paper-strong: #fffdf8;
   --ink: #484236;
@@ -9,11 +10,59 @@
   --gold-soft: #eee2c1;
   --line: #e6ddca;
   --line-strong: #dbc9a4;
-  --shadow: 0 6px 20px rgba(80, 68, 43, .06);
-  --serif: "Palatino Linotype", "Book Antiqua", Georgia, serif;
+
+  /* ── Semantic color tokens ───────────────────────────────────────────── */
+  --ink-soft: #777064;
+  --ink-muted: #938878;
+  --ink-faint: #b0a899;
+  --surface-hover: rgba(240, 234, 220, .55);
+
+  /* ── Shadows (warm-tinted) ───────────────────────────────────────────── */
+  --shadow-xs: 0 2px 6px rgba(80, 68, 43, .04);
+  --shadow-sm: 0 3px 10px rgba(80, 68, 43, .07);
+  --shadow:    0 6px 20px rgba(80, 68, 43, .09);
+  --shadow-md: 0 6px 20px rgba(80, 68, 43, .09);
+  --shadow-lg: 0 12px 40px rgba(80, 68, 43, .13);
+
+  /* ── Border radius scale ─────────────────────────────────────────────── */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-xl:   20px;
+  --radius-pill: 9999px;
+
+  /* ── Fluid type scale (Major Third 1.25, base 16px) ─────────────────── */
+  --text-xs:   clamp(11px, 1.1vw, 12px);
+  --text-sm:   clamp(13px, 1.3vw, 14px);
+  --text-base: clamp(15px, 1.5vw, 16px);
+  --text-md:   clamp(16px, 1.7vw, 18px);
+  --text-lg:   clamp(18px, 2vw,   20px);
+  --text-xl:   clamp(20px, 2.3vw, 24px);
+  --text-2xl:  clamp(22px, 2.7vw, 28px);
+  --text-3xl:  clamp(26px, 3.2vw, 34px);
+  --text-4xl:  clamp(30px, 3.8vw, 40px);
+
+  /* ── Spacing (8px grid) ──────────────────────────────────────────────── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  --serif: var(--font-lora), "Palatino Linotype", "Book Antiqua", Georgia, serif;
   --sans: "Segoe UI", Arial, sans-serif;
   --page-gutter: clamp(18px, 3vw, 44px);
   --layout-gap: 18px;
+
+  /* ── Focus ring ──────────────────────────────────────────────────────── */
+  --focus-ring: 0 0 0 3px rgba(100, 115, 62, .32);
 }
 
 * {
@@ -34,7 +83,7 @@ body {
   background:
     radial-gradient(circle at 46% 0%, rgba(250, 243, 222, .5), transparent 36rem),
     var(--paper);
-  font: 16px/1.5 var(--sans);
+  font: var(--text-base)/1.6 var(--sans);
 }
 
 main {
@@ -60,6 +109,22 @@ h2,
 h3,
 p {
   margin: 0;
+}
+
+/* ── Focus visible (keyboard navigation) ─────────────────────────────────── */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .paper-glow {
