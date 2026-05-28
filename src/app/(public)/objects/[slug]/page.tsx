@@ -6,6 +6,7 @@ import { OBJECT_STATUS } from '@/lib/constants/objectStatus';
 import { SlotsSection } from '@/components/features/SlotsSection';
 import { DonatedToast } from '@/components/features/DonatedToast';
 import { SubscribeSectionClient } from '@/components/features/SubscribeSectionClient';
+import { ObjectViewTracker } from '@/components/features/ObjectViewTracker';
 import type { SlotForDonate } from '@/components/features/DonateModal';
 
 type ObjectRow = {
@@ -115,6 +116,7 @@ export default async function ObjectPage({
 
   return (
     <div className="object-page-layout">
+      <ObjectViewTracker objectId={object.id} />
       <DonatedToast show={donated === 'true'} />
 
       <nav style={{ marginBottom: '16px', fontSize: '14px', fontFamily: 'var(--sans)', color: 'var(--olive-soft)' }}>

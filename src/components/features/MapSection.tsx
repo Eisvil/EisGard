@@ -1,11 +1,51 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { ObjectIcon } from '@/lib/constants/objectIcons';
 import { OBJECT_STATUS } from '@/lib/constants/objectStatus';
 import { ZONES, ZONE_LABELS, type ZoneKey } from '@/lib/constants/zones';
 import { formatMoney as _formatMoney, getProgress as _getProgress } from '@/lib/utils/formatMoney';
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
+
+export type ChronicleEvent = {
+  id: string;
+  event_type: string;
+  display_name: string;
+  is_anonymous: boolean;
+  avatar_url: string | null;
+  object_name: string | null;
+  object_slug: string | null;
+  amount_kopecks: number | null;
+  points: number | null;
+  description: string | null;
+  created_at: string;
+};
+
+export type NewsItem = {
+  slug: string;
+  title: string;
+  summary: string | null;
+  cover_url: string | null;
+  tag: string | null;
+  published_at: string | null;
+};
+
+export type SiteStats = {
+  users: number;
+  raised_kopecks: number;
+  volunteer_days: number;
+  objects_done: number;
+};
+
+export type UserProfile = {
+  name: string;
+  title?: string;
+  points: number;
+  donated_kopecks: number;
+  volunteer_days: number;
+  avatar_url?: string | null;
+};
 
 export type SettlementObject = {
   id: string;
@@ -44,14 +84,108 @@ function getStatusInfo(status: string) {
 
 const ALL_ZONES = 'Все зоны' as const;
 
-export function MapSection({ objects }: { objects: SettlementObject[] }) {
+function formatTimeAgo(iso: string): string {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 3600) return `${Math.floor(diff / 60) || 1} мин назад`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ч назад`;
+  if (diff < 172800) return 'вчера';
+  return `${Math.floor(diff / 86400)} дн назад`;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+type MapSectionProps = {
+  objects: SettlementObject[];
+  initialChronicle?: ChronicleEvent[];
+  newsItems?: NewsItem[];
+  siteStats?: SiteStats;
+  userProfile?: UserProfile;
+};
+
+export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile }: MapSectionProps) {
   const router = useRouter();
   const defaultObj = objects.find(o => o.slug === 'kuznitsa') ?? objects[0];
   const [selectedId, setSelectedId] = useState(defaultObj?.id ?? '');
   const [activeZone, setActiveZone] = useState<string>(ALL_ZONES);
   const [mapScale, setMapScale] = useState(1);
   const [toastMsg, setToastMsg] = useState('');
+  const [chronicles, setChronicles] = useState<ChronicleEvent[]>(initialChronicle);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapCanvasRef = useRef<HTMLDivElement>(null);
+  const mapImageRef = useRef<HTMLImageElement>(null);
+  const [hotspotStyle, setHotspotStyle] = useState<React.CSSProperties>({});
+
+  function updateHotspotBounds() {
+    const canvas = mapCanvasRef.current;
+    const img = mapImageRef.current;
+    if (!canvas || !img || !img.naturalWidth || !img.naturalHeight) return;
+    const cW = canvas.clientWidth;
+    const cH = canvas.clientHeight;
+    const scale = Math.max(cW / img.naturalWidth, cH / img.naturalHeight);
+    const w = img.naturalWidth * scale;
+    const h = img.naturalHeight * scale;
+    setHotspotStyle({
+      position: 'absolute',
+      left: (cW - w) / 2,
+      top: (cH - h) / 2,
+      right: 'auto',
+      bottom: 'auto',
+      width: w,
+      height: h,
+    });
+  }
+
+  useEffect(() => {
+    const canvas = mapCanvasRef.current;
+    if (!canvas) return;
+    const ro = new ResizeObserver(updateHotspotBounds);
+    ro.observe(canvas);
+    return () => ro.disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const prependChronicle = useCallback((event: ChronicleEvent) => {
+    setChronicles(prev => [event, ...prev].slice(0, 20));
+  }, []);
+
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const channel = supabase
+      .channel('chronicle-home')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chronicle_events' },
+        (payload) => {
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            const r = payload.new as Record<string, unknown>;
+            prependChronicle({
+              id: r.id as string,
+              event_type: r.event_type as string,
+              display_name: (r.is_anonymous || !r.display_name) ? 'Аноним' : r.display_name as string,
+              is_anonymous: r.is_anonymous as boolean,
+              avatar_url: null,
+              object_name: null,
+              object_slug: null,
+              amount_kopecks: r.amount_kopecks as number | null,
+              points: r.points as number | null,
+              description: r.description as string | null,
+              created_at: r.created_at as string,
+            });
+          }, 500);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [prependChronicle]);
 
   const selected = objects.find(o => o.id === selectedId) ?? objects[0];
 
@@ -137,36 +271,43 @@ export function MapSection({ objects }: { objects: SettlementObject[] }) {
 
       {/* Map */}
       <section className="settlement-map" aria-label="Интерактивная карта поселения">
-        <div className="map-canvas">
+        <div className="map-canvas" ref={mapCanvasRef}>
           <img
+            ref={mapImageRef}
             src="/map/settlement.png"
             alt="Иллюстрированная карта городища с постройками"
             id="map-image"
             style={{ transform: `scale(${mapScale})` }}
+            onLoad={updateHotspotBounds}
           />
 
           {/* Player HUD */}
           <section className="player-hud" aria-label="Профиль участника">
             <div className="player-avatar" aria-hidden="true">
-              <svg viewBox="0 0 44 44">
-                <path className="avatar-bg" d="M22 2a20 20 0 1 1 0 40 20 20 0 0 1 0-40Z" />
-                <path className="avatar-face" d="M22 9.2c4.1 0 6.5 3.2 6.5 7.5 0 3.5-1.8 6.6-4.5 7.6l1.1 3.1 6.9 3.8v5.1H12v-5.1l6.9-3.8 1-3.1c-2.6-1.1-4.4-4.1-4.4-7.6 0-4.3 2.4-7.5 6.5-7.5Z" />
-                <path className="avatar-coat" d="M13.1 36.4v-4.1l6.2-3.7 2.7 4.1 2.7-4.1 6.2 3.7v4.1H13.1Z" />
-              </svg>
+              {userProfile?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={userProfile.avatar_url} alt={userProfile.name} style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+              ) : (
+                <svg viewBox="0 0 44 44">
+                  <path className="avatar-bg" d="M22 2a20 20 0 1 1 0 40 20 20 0 0 1 0-40Z" />
+                  <path className="avatar-face" d="M22 9.2c4.1 0 6.5 3.2 6.5 7.5 0 3.5-1.8 6.6-4.5 7.6l1.1 3.1 6.9 3.8v5.1H12v-5.1l6.9-3.8 1-3.1c-2.6-1.1-4.4-4.1-4.4-7.6 0-4.3 2.4-7.5 6.5-7.5Z" />
+                  <path className="avatar-coat" d="M13.1 36.4v-4.1l6.2-3.7 2.7 4.1 2.7-4.1 6.2 3.7v4.1H13.1Z" />
+                </svg>
+              )}
             </div>
             <div className="player-identity">
-              <strong>Гость городища</strong>
-              <small>Войдите, чтобы участвовать</small>
+              <strong>{userProfile?.name ?? 'Гость городища'}</strong>
+              <small>{userProfile?.title ?? (userProfile ? 'Участник' : 'Войдите, чтобы участвовать')}</small>
             </div>
             <div className="player-resources" aria-label="Ресурсы участника">
-              <span><b>★</b> — <small>баллов</small></span>
-              <span><b>♧</b> — <small>руб.</small></span>
-              <span><b>◷</b> — <small>ч</small></span>
+              <span><b>★</b> {userProfile ? userProfile.points.toLocaleString('ru') : '—'} <small>баллов</small></span>
+              <span><b>♧</b> {userProfile ? Math.round(userProfile.donated_kopecks / 100).toLocaleString('ru') : '—'} <small>руб.</small></span>
+              <span><b>◷</b> {userProfile ? userProfile.volunteer_days : '—'} <small>дн</small></span>
             </div>
           </section>
 
-          {/* Hotspots */}
-          <div className="hotspots">
+          {/* Hotspots — positioned to match actual rendered image bounds */}
+          <div className="hotspots" style={hotspotStyle}>
             {hotspots.map(obj => {
               const x = Number(obj.map_position_x);
               const y = Number(obj.map_position_y);
@@ -216,7 +357,7 @@ export function MapSection({ objects }: { objects: SettlementObject[] }) {
                   <path d="M16 13.5a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4ZM9.5 24v-3.1c0-3.1 2.9-5.2 6.5-5.2s6.5 2.1 6.5 5.2V24M7.5 12.2a3.1 3.1 0 1 0 0-6.2M7.5 15c-2.9 0-5 1.8-5 4.2v2.5h4.2M24.5 12.2a3.1 3.1 0 1 1 0-6.2M24.5 15c2.9 0 5 1.8 5 4.2v2.5h-4.2" />
                 </svg>
               </dt>
-              <dd><strong>1 248</strong><small>Участники проекта</small></dd>
+              <dd><strong>{(siteStats?.users ?? 0).toLocaleString('ru')}</strong><small>Участники проекта</small></dd>
             </div>
             <div>
               <dt className="icon" aria-hidden="true">
@@ -225,7 +366,7 @@ export function MapSection({ objects }: { objects: SettlementObject[] }) {
                   <path className="icon-detail" d="M13 8c0-2 1.6-3.5 3-3.5S19 6 19 8" />
                 </svg>
               </dt>
-              <dd><strong>864 500 ₽</strong><small>Собрано средств</small></dd>
+              <dd><strong>{formatMoney(siteStats?.raised_kopecks ?? 0)}</strong><small>Собрано средств</small></dd>
             </div>
             <div>
               <dt className="icon" aria-hidden="true">
@@ -234,7 +375,7 @@ export function MapSection({ objects }: { objects: SettlementObject[] }) {
                   <path className="icon-detail" d="M13 9h6l-3 4-3-4ZM13 24h6l-3-4-3 4Z" />
                 </svg>
               </dt>
-              <dd><strong>2 146 ч</strong><small>Волонтёрских часов</small></dd>
+              <dd><strong>{(siteStats?.volunteer_days ?? 0).toLocaleString('ru')} дн</strong><small>Волонтёрских дней</small></dd>
             </div>
             <div>
               <dt className="icon" aria-hidden="true">
@@ -243,31 +384,41 @@ export function MapSection({ objects }: { objects: SettlementObject[] }) {
                   <path className="icon-detail" d="M21 9V5h3v7" />
                 </svg>
               </dt>
-              <dd><strong>4</strong><small>Объектов построено</small></dd>
+              <dd><strong>{siteStats?.objects_done ?? 0}</strong><small>Объектов завершено</small></dd>
             </div>
           </dl>
           <h3 className="rail-section-title">Летопись</h3>
           <ul className="activity">
-            <li>
-              <b className="portrait p1"></b>
-              <span>Иван Петров<small>поддержал Кузницу<br /><strong>5 000 ₽</strong></small></span>
-              <time>2 ч назад</time>
-            </li>
-            <li>
-              <b className="portrait p2"></b>
-              <span>Артем из Казани<small>поддержал Таверну<br /><strong>+600 баллов</strong></small></span>
-              <time>5 ч назад</time>
-            </li>
-            <li>
-              <b className="portrait p3"></b>
-              <span>Мария Соколова<small>присоединилась к проекту</small></span>
-              <time>вчера</time>
-            </li>
+            {chronicles.length === 0 && (
+              <li><span style={{ color: '#9a927f', fontSize: 13 }}>Событий пока нет</span></li>
+            )}
+            {chronicles.slice(0, 3).map((ev, i) => (
+              <li key={ev.id}>
+                {ev.avatar_url ? (
+                  <img src={ev.avatar_url} alt="" className="portrait" style={{ objectFit: 'cover' }} />
+                ) : (
+                  <b className={`portrait p${(i % 3) + 1}`} aria-hidden="true"></b>
+                )}
+                <span>
+                  {ev.display_name}
+                  <small>
+                    {ev.event_type === 'donation' && ev.amount_kopecks
+                      ? <>пожертвовал{ev.object_name ? ` на «${ev.object_name}»` : ''}<br /><strong>{formatMoney(ev.amount_kopecks)}</strong></>
+                      : ev.event_type === 'volunteer'
+                      ? <>волонтёр{ev.object_name ? ` «${ev.object_name}»` : ''}{ev.points ? <><br /><strong>+{ev.points} баллов</strong></> : null}</>
+                      : ev.event_type === 'material'
+                      ? <>передал материалы</>
+                      : ev.description ?? 'участвует в проекте'}
+                  </small>
+                </span>
+                <time>{formatTimeAgo(ev.created_at)}</time>
+              </li>
+            ))}
           </ul>
           <button
             className="text-link full-link"
             type="button"
-            onClick={() => showToast('Раздел готовится к публикации')}
+            onClick={() => router.push('/chronicle')}
           >
             Вся летопись <span>→</span>
           </button>
@@ -316,9 +467,12 @@ export function MapSection({ objects }: { objects: SettlementObject[] }) {
                 type="button"
                 className={`object-card${obj.id === selectedId ? ' selected' : ''}`}
                 style={{ '--status-color': info.color } as React.CSSProperties}
-                onClick={() => selectObject(obj.id)}
+                onClick={() => router.push(`/objects/${obj.slug}`)}
               >
-                {obj.cover_url && <img src={obj.cover_url} alt="" />}
+                {obj.cover_url
+                  ? <img src={obj.cover_url} alt={obj.name} />
+                  : <span className="object-card-placeholder" aria-hidden="true" />
+                }
                 <span className="badge">{info.label}</span>
                 <div className="object-copy">
                   <h3>
@@ -359,54 +513,28 @@ export function MapSection({ objects }: { objects: SettlementObject[] }) {
         </div>
       </section>
 
-      {/* Chronicle */}
+      {/* Chronicle / News */}
       <section className="chronicle panel" id="chronicle" aria-labelledby="chronicle-heading">
         <h2 id="chronicle-heading">Новости<br />городища</h2>
-        <article>
-          <img src="/objects/gardens.png" alt="" />
-          <div>
-            <time>12 мая 2024</time>
-            <h3>Посажены первые кедры</h3>
-            <p>Начали кедровую аллею. Пусть растут вместе с нами.</p>
-            <small>ЗЕМЛЯ И ДЕРЕВЬЯ</small>
-          </div>
-        </article>
-        <article>
-          <img src="/objects/shed.png" alt="" />
-          <div>
-            <time>18 мая 2024</time>
-            <h3>Выбрано место для навеса</h3>
-            <p>Очистили площадку у реки. Здесь будет наш первый общий адрес.</p>
-            <small>СТРОИТЕЛЬСТВО</small>
-          </div>
-        </article>
-        <article>
-          <img src="/objects/guardhouse.png" alt="" />
-          <div>
-            <time>21 мая 2024</time>
-            <h3>Сложили костровой круг</h3>
-            <p>Камни собраны со всего берега. Место, где будем собираться.</p>
-            <small>ОБЩИНА</small>
-          </div>
-        </article>
-        <article>
-          <img src="/objects/forge.png" alt="" />
-          <div>
-            <time>24 мая 2024</time>
-            <h3>Начат сруб кузницы</h3>
-            <p>Подготовлены брёвна и место для будущего горна.</p>
-            <small>РЕМЕСЛО</small>
-          </div>
-        </article>
-        <article>
-          <img src="/objects/coop.png" alt="" />
-          <div>
-            <time>26 мая 2024</time>
-            <h3>Найдено место для колодца</h3>
-            <p>Определили источник воды рядом с жилой частью.</p>
-            <small>БЛАГОУСТРОЙСТВО</small>
-          </div>
-        </article>
+        {newsItems.length === 0 && (
+          <article style={{ gridColumn: '2 / -1', color: '#9a927f', fontSize: 14, alignSelf: 'center' }}>
+            Новостей пока нет — следите за обновлениями.
+          </article>
+        )}
+        {newsItems.slice(0, 5).map((n) => (
+          <article key={n.slug} style={{ cursor: 'pointer' }} onClick={() => router.push(`/news/${n.slug}`)}>
+            {n.cover_url
+              ? <img src={n.cover_url} alt="" />
+              : <div style={{ width: 88, height: 112, borderRadius: 5, background: '#e8dfc8', flexShrink: 0 }} />
+            }
+            <div>
+              <time>{n.published_at ? formatDate(n.published_at) : ''}</time>
+              <h3>{n.title}</h3>
+              {n.summary && <p>{n.summary.slice(0, 80)}{n.summary.length > 80 ? '…' : ''}</p>}
+              {n.tag && <small>{n.tag.toUpperCase()}</small>}
+            </div>
+          </article>
+        ))}
       </section>
 
       {/* Toast */}

@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export function Footer() {
   return (
     <footer className="site-footer" id="about">
@@ -39,6 +41,11 @@ export function Footer() {
           <strong>Устойчивость</strong>
           <p>Строим в гармонии с лесом и людьми. Не навсегда, а на пользу.</p>
         </div>
+      </div>
+      <div className="footer-legal">
+        <Link href="/privacy">Политика конфиденциальности</Link>
+        <Link href="/personal-data">Обработка персональных данных</Link>
+        <Link href="/about">О проекте</Link>
       </div>
     </footer>
   );

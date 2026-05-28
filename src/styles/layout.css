@@ -101,8 +101,9 @@
 .dashboard {
   --edge: var(--page-gutter);
   --support-expansion: 0px;
+  width: 100%;
   max-width: none;
-  margin: 0 auto;
+  margin: 0;
   padding: 0 0 12px;
   display: grid;
   grid-template-columns: var(--edge) 340px minmax(0, 1fr) 280px 350px var(--edge);
@@ -289,11 +290,13 @@
 }
 
 .portrait {
+  display: block;
   width: 35px;
   height: 35px;
   flex: none;
   border-radius: 50%;
   background: #d6ceba;
+  object-fit: cover;
 }
 
 .p1 {

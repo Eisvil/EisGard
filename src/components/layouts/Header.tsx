@@ -13,6 +13,7 @@ export function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -20,12 +21,13 @@ export function Header() {
     const supabase = createBrowserSupabaseClient();
     const { data } = await supabase
       .from('profiles')
-      .select('full_name, avatar_url')
+      .select('full_name, avatar_url, role')
       .eq('id', userId)
       .single();
     if (data) {
       setDisplayName(data.full_name ?? '');
       setAvatarUrl(data.avatar_url ?? null);
+      setRole(data.role ?? null);
     }
   }
 
@@ -40,7 +42,7 @@ export function Header() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       setUser(u);
-      if (u) fetchProfile(u.id); else { setDisplayName(''); setAvatarUrl(null); }
+      if (u) fetchProfile(u.id); else { setDisplayName(''); setAvatarUrl(null); setRole(null); }
     });
 
     return () => subscription.unsubscribe();
@@ -112,6 +114,11 @@ export function Header() {
                   <Link href="/profile" onClick={() => setMenuOpen(false)}>
                     Личный кабинет
                   </Link>
+                  {(role === 'admin' || role === 'moderator') && (
+                    <Link href="/admin" onClick={() => setMenuOpen(false)}>
+                      Админка
+                    </Link>
+                  )}
                   <div className="dropdown-divider" />
                   <button
                     type="button"
