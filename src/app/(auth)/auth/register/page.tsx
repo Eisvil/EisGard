@@ -51,10 +51,14 @@ export default function RegisterPage() {
     setErrors({});
 
     const supabase = createBrowserSupabaseClient();
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
     const { error } = await supabase.auth.signUp({
       email: email.toLowerCase(),
       password,
-      options: { data: { full_name: fullName.trim() } },
+      options: {
+        data: { full_name: fullName.trim() },
+        emailRedirectTo: `${siteUrl}/auth/verify-email`,
+      },
     });
 
     if (error) {
