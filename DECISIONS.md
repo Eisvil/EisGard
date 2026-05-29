@@ -216,6 +216,25 @@ Tailwind-утилиты (размеры, отступы, flex) в компоне
 
 **Причина:** это runtime-конфигурация Storage, не изменение схемы БД. Создание миграции `.sql` файла для изменения записи в `storage.buckets` нестандартно — миграции меняют схему, не данные системных таблиц. Изменение применено напрямую и не требует `npx supabase db push`.
 
+## ЮMoney вебхук: SHA-1 → HMAC-SHA256 (с 18 мая 2026)
+
+ЮMoney прекратил отправлять поле `sha1_hash` и перешёл на `sign` (HMAC-SHA256) с 18 мая 2026.
+
+**Формула:** `HMAC-SHA256(secret, все_поля_кроме_sign_sorted_alphabetically)` где каждый value прогоняется через `encodeURIComponent`, строка собирается как `key=value&key=value&...`.
+
+**Реализация:** `src/lib/payments/ymoney.ts` — функция `verifyNotification(params, secret)`. Старые `verifyWebhookSignature` и `verifyCardSignature` (SHA-1) удалены полностью.
+
+Функция `buildQuickpayUrl()` не изменилась.
+
+## `donations.amount_kopecks_check` — минимум > 0 вместо >= 10000
+
+Было: `CHECK (amount_kopecks >= 10000)`.  
+Стало: `CHECK (amount_kopecks > 0)` (миграция `20260529220000`).
+
+**Причина:** ЮMoney удерживает комиссию (~3%) с карточных платежей. При платеже 100 ₽ на кошелёк приходит ~97 ₽ = 9700 копеек. Старый CHECK блокировал `UPDATE` в вебхуке молча — статус оставался `pending`, но баллы уже начислялись (второй `UPDATE` без `amount_kopecks` проходил).
+
+Минимальная сумма доната (100 ₽) по-прежнему валидируется на уровне API (`/api/donations/initiate`, Zod).
+
 ## Дизайн: Тёплая тема shadcn в admin.css
 
 13 HSL-переменных shadcn сдвинуты с cold neutral-gray на тёплые paper/olive:

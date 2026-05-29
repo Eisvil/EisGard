@@ -333,6 +333,15 @@
 - [x] `src/components/features/admin/SlotsManager.tsx` — `TiptapEditor` для `historical_note` в форме добавления и редактирования слота
 - [x] `src/components/features/admin/ObjectEditTabs.tsx` — тип `Slot` расширен: `historical_note`
 
+### ЮMoney вебхук — HMAC-SHA256 + правки донатов (2026-05-29)
+- [x] `src/lib/payments/ymoney.ts` — полностью переписан: SHA-1 (`verifyWebhookSignature`, `verifyCardSignature`) удалён; добавлена `verifyNotification(params, secret)` на HMAC-SHA256 (все поля кроме `sign`, сортировка алфавитная, значения `encodeURIComponent`, joined `key=value&`)
+- [x] `src/app/api/payments/ymoney/webhook/route.ts` — вызов заменён на `verifyNotification(params, secret)`; ручной парсинг body через `decodeURIComponent` (сохранён `+` в datetime)
+- [x] `supabase/migrations/20260529220000_fix_donations_amount_check.sql` — `donations_amount_kopecks_check` изменён с `>= 10000` на `> 0` (ЮMoney удерживает комиссию, реальная сумма < минимума при оплате 100 ₽)
+- [x] `supabase/migrations/20260529000001_increment_points_security_definer.sql` — `increment_points` получила `SECURITY DEFINER` (обход RLS при начислении баллов из service-role контекста)
+- [x] `src/components/features/admin/DonationsTable.tsx` — «—» → «На развитие Городища» для донатов без объекта; кнопки «Подтвердить» (только pending) и «Удалить» с AlertDialog в каждой строке
+- [x] `src/components/features/ChronicleList.tsx` — при `event_type === 'donation'` без `object_name` → «пожертвовал на развитие Городища» вместо «пожертвовал»
+- [x] `src/app/api/admin/donations/[id]/route.ts` — **новый роут**: PATCH `{action:'confirm'}` (статус → confirmed, начисляет баллы, обновляет счётчики слота/объекта); DELETE (удаляет донат, откатывает баллы если confirmed)
+
 ### Рестайл админки в духе публичного сайта (2026-05-29)
 - [x] `src/app/admin.css` — `body` получил тёплый paper-радиальный градиент (совпадает с публичным сайтом); `h1/h2/h3` переключены на `var(--serif)` (Lora); добавлены классы `.admin-brand*`, `.admin-nav-link`, `.admin-nav-active`, `.admin-sidebar-footer-link`
 - [x] `src/components/layouts/AdminSidebar.tsx` — все `slate-*`/`bg-white` заменены; добавлен логотип `logo.png` + «Живое Городище» шрифтом Lora (olive-dark) + подпись «Панель администратора»; активный пункт навигации — тёплый olive-фон + золотая левая граница (вертикальный аналог gold-подчёркивания публичной навигации)
@@ -356,4 +365,4 @@ _(все основные US реализованы)_
 - [x] Chronicle и новости на главной — заменены на реальные данные Supabase (US-010)
 - [x] Статистика в правой панели — подключена к реальным данным Supabase (2026-05-28)
 - [ ] Email-уведомления (`donation_confirmed`, `new_title`) — после подключения Resend (US-007)
-- [ ] Тестирование webhook с реальным ЮMoney (env-переменные добавлены, нужен реальный платёж)
+- [x] Тестирование webhook с реальным ЮMoney — HMAC-SHA256 верифицирован (`match: true`), донат автоматически подтверждён (2026-05-29)
