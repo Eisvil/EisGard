@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient, createServiceSupabaseClient } from '@/lib/supabase/server';
 import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { VolunteersClient } from '@/components/features/VolunteersClient';
@@ -69,11 +69,13 @@ export default async function VolunteersPage() {
     profileName = prof?.full_name ?? undefined;
   }
 
-  // Compute spots_left for each camp
+  // Compute spots_left for each camp (service client bypasses RLS to count all applications)
   const campIds = camps.map((c) => c.id);
   let countMap: Record<string, number> = {};
+  let userAppliedCampIds: string[] = [];
   if (campIds.length > 0) {
-    const { data: rawApps } = await supabase
+    const serviceClient = await createServiceSupabaseClient();
+    const { data: rawApps } = await serviceClient
       .from('volunteer_applications')
       .select('camp_id')
       .in('camp_id', campIds)
@@ -81,6 +83,16 @@ export default async function VolunteersPage() {
     for (const row of (rawApps ?? []) as AppRow[]) {
       countMap[row.camp_id] = (countMap[row.camp_id] ?? 0) + 1;
     }
+  }
+
+  // Fetch current user's own applications (any status — show "Заявка подана" regardless)
+  if (user && campIds.length > 0) {
+    const { data: rawUserApps } = await supabase
+      .from('volunteer_applications')
+      .select('camp_id')
+      .eq('user_id', user.id)
+      .in('camp_id', campIds);
+    userAppliedCampIds = ((rawUserApps ?? []) as AppRow[]).map((r) => r.camp_id);
   }
 
   const campsWithSpots = camps.map((camp) => ({
@@ -121,6 +133,7 @@ export default async function VolunteersPage() {
           skills={skills}
           isLoggedIn={!!user}
           defaultName={profileName}
+          userAppliedCampIds={userAppliedCampIds}
         />
       )}
     </div>

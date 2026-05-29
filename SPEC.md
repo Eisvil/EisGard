@@ -13,7 +13,8 @@
 накапливаемый статус в летописи проекта.
 
 ### Стек
-- **Frontend:** Next.js 16 (App Router), TypeScript, Tailwind CSS v4, shadcn/ui
+- **Frontend:** Next.js 16 (App Router), TypeScript; Lora (Google Fonts, `next/font/google`)
+- **CSS:** кастомная дизайн-система (`src/styles/`); Tailwind CSS v4 + shadcn/ui — только для `/admin`
 - **Backend:** Supabase (PostgreSQL 15, Auth, RLS, Storage, Realtime)
 - **Деплой:** Vercel (фронт), Beget VPS (Node.js — webhook ЮMoney, PDF, email, cron)
 - **Платежи:** ЮMoney (разовые quickpay + рекуррентные recurring API)

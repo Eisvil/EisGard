@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
+import { uuidSchema } from '@/lib/utils/zod';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -12,7 +13,7 @@ const patchSchema = z.object({
   needed_qty: z.number().positive().optional(),
   is_active: z.boolean().optional(),
   sort_order: z.number().int().optional(),
-  object_id: z.string().uuid().nullable().optional(),
+  object_id: uuidSchema.nullable().optional(),
 });
 
 export async function PATCH(

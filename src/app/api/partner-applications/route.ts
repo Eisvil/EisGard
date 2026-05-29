@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { uuidSchema } from '@/lib/utils/zod';
 
 const schema = z.object({
   org_name:      z.string().min(2).max(200),
@@ -10,7 +11,7 @@ const schema = z.object({
   contact_name:  z.string().min(2).max(120),
   contact_email: z.string().email(),
   contact_phone: z.string().regex(/^\+?[0-9\s\-(]{7,20}$/).optional(),
-  object_id:     z.string().uuid().optional(),
+  object_id:     uuidSchema.optional(),
 });
 
 export async function POST(request: NextRequest) {

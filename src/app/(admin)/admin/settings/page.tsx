@@ -40,19 +40,25 @@ export default async function SettingsPage() {
     supabase
       .from('settings')
       .select('key, value')
-      .in('key', ['points_per_ruble', 'points_per_day']) as Promise<{
+      .in('key', ['points_per_ruble', 'points_per_day', 'social_vk', 'social_telegram', 'social_youtube', 'social_vk_icon', 'social_telegram_icon', 'social_youtube_icon']) as Promise<{
       data: { key: string; value: unknown }[] | null;
     }>,
   ]);
 
-  const settingsMap: Record<string, number> = {};
+  const settingsMap: Record<string, string> = {};
   for (const row of settingsRows ?? []) {
-    settingsMap[row.key] = Number(row.value);
+    settingsMap[row.key] = String(row.value ?? '');
   }
 
   const initialSettings = {
-    points_per_ruble: settingsMap['points_per_ruble'] ?? 1,
-    points_per_day: settingsMap['points_per_day'] ?? 1000,
+    points_per_ruble: Number(settingsMap['points_per_ruble'] ?? 1) || 1,
+    points_per_day: Number(settingsMap['points_per_day'] ?? 1000) || 1000,
+    social_vk: settingsMap['social_vk'] ?? '',
+    social_telegram: settingsMap['social_telegram'] ?? '',
+    social_youtube: settingsMap['social_youtube'] ?? '',
+    social_vk_icon: settingsMap['social_vk_icon'] ?? '',
+    social_telegram_icon: settingsMap['social_telegram_icon'] ?? '',
+    social_youtube_icon: settingsMap['social_youtube_icon'] ?? '',
   };
 
   return (

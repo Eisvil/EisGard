@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TiptapEditor } from '@/components/features/admin/TiptapEditor';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -28,6 +29,7 @@ type Slot = {
   sort_order: number;
   image_url: string | null;
   description: string | null;
+  historical_note: Record<string, unknown> | null;
 };
 
 type Props = {
@@ -44,6 +46,11 @@ const DEFAULT_UNIT: Record<SlotType, string> = {
   money: 'RUB',
   labor: 'ч',
 };
+
+function isNoteEmpty(note: Record<string, unknown>): boolean {
+  const c = note.content;
+  return !Array.isArray(c) || c.length === 0;
+}
 
 async function uploadSlotImage(file: File, slotId: string): Promise<{ url: string } | { error: string }> {
   if (file.size > 5 * 1024 * 1024) return { error: 'Файл слишком большой (максимум 5 МБ)' };
@@ -75,6 +82,7 @@ function SlotRow({
   const [unit, setUnit]             = useState(slot.unit);
   const [description, setDescription] = useState(slot.description ?? '');
   const [imageUrl, setImageUrl]     = useState(slot.image_url ?? '');
+  const [historicalNote, setHistoricalNote] = useState<Record<string, unknown>>(slot.historical_note ?? {});
   const [imgUploading, setImgUploading] = useState(false);
   const [imgError, setImgError]     = useState('');
   const [loading, setLoading]       = useState(false);
@@ -103,10 +111,12 @@ function SlotRow({
         name, goal_value: goalKopecks, unit,
         description: description.trim() || null,
         image_url: imageUrl || null,
+        historical_note: isNoteEmpty(historicalNote) ? null : historicalNote,
       }),
     });
     if (res.ok) {
-      onUpdated({ ...slot, name, goal_value: goalKopecks, unit, description: description.trim() || null, image_url: imageUrl || null });
+      const note = isNoteEmpty(historicalNote) ? null : historicalNote;
+      onUpdated({ ...slot, name, goal_value: goalKopecks, unit, description: description.trim() || null, image_url: imageUrl || null, historical_note: note });
       setEditing(false);
     }
     setLoading(false);
@@ -169,6 +179,10 @@ function SlotRow({
                 </Button>
                 {imgError && <span className="text-xs text-destructive">{imgError}</span>}
               </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Историческая справка</Label>
+              <TiptapEditor value={historicalNote} onChange={setHistoricalNote} />
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={save} disabled={loading} className="h-8">
@@ -250,6 +264,7 @@ export function SlotsManager({ objectId, initialSlots }: Props) {
   const [newUnit, setNewUnit] = useState('RUB');
   const [newDesc, setNewDesc] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
+  const [newHistoricalNote, setNewHistoricalNote] = useState<Record<string, unknown>>({});
   const [imgUploading, setImgUploading] = useState(false);
   const [imgError, setImgError]         = useState('');
   const [addLoading, setAddLoading]     = useState(false);
@@ -287,8 +302,9 @@ export function SlotsManager({ objectId, initialSlots }: Props) {
         goal_value:  newUnit === 'RUB' ? parseInt(newGoal, 10) * 100 : parseInt(newGoal, 10),
         unit:        newUnit,
         sort_order:  slots.length,
-        description: newDesc.trim() || null,
-        image_url:   newImageUrl || null,
+        description:     newDesc.trim() || null,
+        image_url:       newImageUrl || null,
+        historical_note: isNoteEmpty(newHistoricalNote) ? null : newHistoricalNote,
       }),
     });
 
@@ -299,7 +315,7 @@ export function SlotsManager({ objectId, initialSlots }: Props) {
       setSlots((prev) => [...prev, json.data as Slot]);
       setAdding(false);
       setNewName(''); setNewGoal(''); setNewType('money'); setNewUnit('RUB');
-      setNewDesc(''); setNewImageUrl(''); setImgError('');
+      setNewDesc(''); setNewImageUrl(''); setImgError(''); setNewHistoricalNote({});
     }
     setAddLoading(false);
   }
@@ -403,11 +419,16 @@ export function SlotsManager({ objectId, initialSlots }: Props) {
             </div>
           </div>
 
+          <div className="space-y-1">
+            <Label className="text-xs">Историческая справка</Label>
+            <TiptapEditor value={newHistoricalNote} onChange={setNewHistoricalNote} />
+          </div>
+
           <div className="flex gap-2">
             <Button size="sm" onClick={handleAdd} disabled={addLoading || !newName.trim() || !newGoal}>
               {addLoading ? 'Сохранение…' : 'Добавить'}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setAddError(''); }}>
+            <Button size="sm" variant="ghost" onClick={() => { setAdding(false); setAddError(''); setNewHistoricalNote({}); }}>
               Отмена
             </Button>
           </div>

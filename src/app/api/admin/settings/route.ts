@@ -5,11 +5,21 @@ import { requireAdmin } from '@/lib/admin/requireAdmin';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
 
-const ALLOWED_KEYS = ['points_per_ruble', 'points_per_day'] as const;
+const ALLOWED_KEYS = [
+  'points_per_ruble', 'points_per_day',
+  'social_vk', 'social_telegram', 'social_youtube',
+  'social_vk_icon', 'social_telegram_icon', 'social_youtube_icon',
+] as const;
 
 const patchSchema = z.object({
   points_per_ruble: z.number().int().min(0).optional(),
   points_per_day: z.number().int().min(0).optional(),
+  social_vk: z.string().optional(),
+  social_telegram: z.string().optional(),
+  social_youtube: z.string().optional(),
+  social_vk_icon: z.string().optional(),
+  social_telegram_icon: z.string().optional(),
+  social_youtube_icon: z.string().optional(),
 });
 
 export async function GET() {

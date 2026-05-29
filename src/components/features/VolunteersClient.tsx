@@ -25,11 +25,12 @@ type Props = {
   skills: Skill[];
   isLoggedIn: boolean;
   defaultName?: string;
+  userAppliedCampIds?: string[];
 };
 
-export function VolunteersClient({ camps, skills, isLoggedIn, defaultName }: Props) {
+export function VolunteersClient({ camps, skills, isLoggedIn, defaultName, userAppliedCampIds = [] }: Props) {
   const [openCampId, setOpenCampId] = useState<string | null>(null);
-  const [appliedCamps, setAppliedCamps] = useState<Set<string>>(new Set());
+  const [appliedCamps, setAppliedCamps] = useState<Set<string>>(new Set(userAppliedCampIds));
   const router = useRouter();
 
   const openCamp = openCampId ? camps.find((c) => c.id === openCampId) : null;

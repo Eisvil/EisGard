@@ -8,6 +8,7 @@ import { OBJECT_STATUS } from '@/lib/constants/objectStatus';
 import { ZONES, ZONE_LABELS, type ZoneKey } from '@/lib/constants/zones';
 import { formatMoney as _formatMoney, getProgress as _getProgress } from '@/lib/utils/formatMoney';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
+import { SupportModal } from '@/components/features/SupportModal';
 
 export type ChronicleEvent = {
   id: string;
@@ -112,10 +113,13 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
   const [activeZone, setActiveZone] = useState<string>(ALL_ZONES);
   const [mapScale, setMapScale] = useState(1);
   const [toastMsg, setToastMsg] = useState('');
+  const [showSupportModal, setShowSupportModal] = useState(false);
   const [chronicles, setChronicles] = useState<ChronicleEvent[]>(initialChronicle);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapCanvasRef = useRef<HTMLDivElement>(null);
   const mapImageRef = useRef<HTMLImageElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const draggedRef  = useRef(false);
   const [hotspotStyle, setHotspotStyle] = useState<React.CSSProperties>({});
 
   function updateHotspotBounds() {
@@ -191,8 +195,62 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
   const selected = objects.find(o => o.id === selectedId) ?? objects[0];
 
   const visibleCards = activeZone === ALL_ZONES
-    ? objects.slice(0, 4)
+    ? objects
     : objects.filter(o => ZONE_LABELS[o.zone as ZoneKey] === activeZone);
+
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+
+    let isDown = false;
+    let startX = 0;
+    let startScroll = 0;
+
+    const onMouseDown = (e: MouseEvent) => {
+      isDown = true;
+      draggedRef.current = false;
+      startX = e.pageX;
+      startScroll = el.scrollLeft;
+      el.style.cursor = 'grabbing';
+      el.style.userSelect = 'none';
+    };
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      const dx = e.pageX - startX;
+      if (Math.abs(dx) > 5) draggedRef.current = true;
+      el.scrollLeft = startScroll - dx;
+    };
+
+    const onEnd = () => {
+      if (!isDown) return;
+      isDown = false;
+      el.style.cursor = '';
+      el.style.userSelect = '';
+    };
+
+    // Suppress card click if drag occurred
+    const onClickCapture = (e: MouseEvent) => {
+      if (draggedRef.current) {
+        e.stopPropagation();
+        draggedRef.current = false;
+      }
+    };
+
+    el.addEventListener('mousedown', onMouseDown);
+    el.addEventListener('mousemove', onMouseMove);
+    el.addEventListener('mouseup', onEnd);
+    el.addEventListener('mouseleave', onEnd);
+    el.addEventListener('click', onClickCapture, true);
+
+    return () => {
+      el.removeEventListener('mousedown', onMouseDown);
+      el.removeEventListener('mousemove', onMouseMove);
+      el.removeEventListener('mouseup', onEnd);
+      el.removeEventListener('mouseleave', onEnd);
+      el.removeEventListener('click', onClickCapture, true);
+    };
+  }, []);
 
   const hotspots = objects.filter(
     o => o.map_position_x != null && o.map_position_y != null
@@ -308,7 +366,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
           </section>
 
           {/* Hotspots — positioned to match actual rendered image bounds */}
-          <div className="hotspots" style={hotspotStyle}>
+          <div className="hotspots" style={{ ...hotspotStyle, transform: `scale(${mapScale})` }}>
             {hotspots.map(obj => {
               const x = Number(obj.map_position_x);
               const y = Number(obj.map_position_y);
@@ -388,6 +446,14 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
               <dd><strong>{siteStats?.objects_done ?? 0}</strong><small>Объектов завершено</small></dd>
             </div>
           </dl>
+          <button
+            type="button"
+            className="primary-button"
+            style={{ width: '100%', marginTop: '16px', height: '50px' }}
+            onClick={() => setShowSupportModal(true)}
+          >
+            Поддержать проект
+          </button>
           <h3 className="rail-section-title">Летопись</h3>
           <ul className="activity">
             {chronicles.length === 0 && (
@@ -449,49 +515,44 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
               </button>
             ))}
           </div>
-          <button
-            className="text-link all-objects"
-            type="button"
-            onClick={() => showToast('Раздел готовится к публикации')}
-          >
-            Все объекты <span>→</span>
-          </button>
         </div>
-        <div className="cards">
-          {visibleCards.map(obj => {
-            const info = getStatusInfo(obj.status);
-            const prog = getProgress(obj.total_raised_rub, obj.total_goal_rub);
-            const slotsLabel = getSlotsLabel(obj);
-            return (
-              <button
-                key={obj.id}
-                type="button"
-                className={`object-card${obj.id === selectedId ? ' selected' : ''}`}
-                style={{ '--status-color': info.color } as React.CSSProperties}
-                onClick={() => router.push(`/objects/${obj.slug}`)}
-              >
-                {obj.cover_url
-                  ? <img src={obj.cover_url} alt={obj.name} />
-                  : <span className="object-card-placeholder" aria-hidden="true" />
-                }
-                <span className="badge">{info.label}</span>
-                <div className="object-copy">
-                  <h3>
-                    <ObjectIcon slug={obj.icon_key ?? obj.slug} className="project-icon" />
-                    <span>{obj.short_name ?? obj.name}</span>
-                  </h3>
-                  <div className="mini-progress">
-                    <span style={{ width: `${prog}%` }}></span>
+        <div className="cards-viewport" ref={carouselRef}>
+          <div className="cards-track">
+            {visibleCards.map((obj) => {
+              const info = getStatusInfo(obj.status);
+              const prog = getProgress(obj.total_raised_rub, obj.total_goal_rub);
+              const slotsLabel = getSlotsLabel(obj);
+              return (
+                <button
+                  key={obj.id}
+                  type="button"
+                  className={`object-card${obj.id === selectedId ? ' selected' : ''}`}
+                  style={{ '--status-color': info.color } as React.CSSProperties}
+                  onClick={() => { if (!draggedRef.current) router.push(`/objects/${obj.slug}`); }}
+                >
+                  {obj.cover_url
+                    ? <img src={obj.cover_url} alt={obj.name} />
+                    : <span className="object-card-placeholder" aria-hidden="true" />
+                  }
+                  <span className="badge">{info.label}</span>
+                  <div className="object-copy">
+                    <h3>
+                      <ObjectIcon slug={obj.icon_key ?? obj.slug} className="project-icon" />
+                      <span>{obj.short_name ?? obj.name}</span>
+                    </h3>
+                    <div className="mini-progress">
+                      <span style={{ width: `${prog}%` }}></span>
+                    </div>
+                    <p>
+                      {formatMoney(obj.total_raised_rub)}
+                      {obj.total_goal_rub > 0 && ` / ${formatMoney(obj.total_goal_rub)}`}
+                    </p>
+                    {slotsLabel && <small>{slotsLabel}</small>}
                   </div>
-                  <p>
-                    {formatMoney(obj.total_raised_rub)}
-                    {obj.total_goal_rub > 0 && ` / ${formatMoney(obj.total_goal_rub)}`}
-                  </p>
-                  {slotsLabel && <small>{slotsLabel}</small>}
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
@@ -499,16 +560,16 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
       <section className="support panel" id="support" aria-labelledby="support-heading">
         <h2 id="support-heading">Как поддержать</h2>
         <div className="support-grid">
-          <button type="button" onClick={() => showToast('Направление: Финансовая поддержка')}>
+          <button type="button" onClick={() => setShowSupportModal(true)}>
             <b><CreditCard size={28} strokeWidth={1.5} aria-hidden="true" /></b><strong>Финансовая поддержка</strong><small>Разовый или ежемесячный вклад</small>
           </button>
-          <button type="button" onClick={() => showToast('Направление: Материалы и инструменты')}>
+          <button type="button" onClick={() => router.push('/materials')}>
             <b><Package size={28} strokeWidth={1.5} aria-hidden="true" /></b><strong>Материалы и инструменты</strong><small>Древесина, металл, инструменты и другое</small>
           </button>
-          <button type="button" onClick={() => showToast('Направление: Волонтёрство')}>
+          <button type="button" onClick={() => router.push('/volunteers')}>
             <b><Users size={28} strokeWidth={1.5} aria-hidden="true" /></b><strong>Волонтёрство</strong><small>Помощь руками и участие в жизни</small>
           </button>
-          <button type="button" onClick={() => showToast('Направление: Партнёрство')}>
+          <button type="button" onClick={() => router.push('/partners')}>
             <b><Handshake size={28} strokeWidth={1.5} aria-hidden="true" /></b><strong>Партнёрство</strong><small>Поддержка от бизнеса и организаций</small>
           </button>
         </div>
@@ -546,6 +607,12 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
       >
         {toastMsg}
       </div>
+
+      {showSupportModal && (
+        <SupportModal
+          onClose={() => setShowSupportModal(false)}
+        />
+      )}
     </>
   );
 }

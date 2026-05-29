@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -18,7 +18,8 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Pencil, Trash2, Plus, CheckCircle2 } from 'lucide-react';
+import { GripVertical, Pencil, Trash2, Plus, CheckCircle2, Upload, X } from 'lucide-react';
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { StaticPagesEditor } from './StaticPagesEditor';
 import { MaterialsManager } from './MaterialsManager';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -72,6 +73,12 @@ type Skill = {
 type Settings = {
   points_per_ruble: number;
   points_per_day: number;
+  social_vk: string;
+  social_telegram: string;
+  social_youtube: string;
+  social_vk_icon: string;
+  social_telegram_icon: string;
+  social_youtube_icon: string;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -157,6 +164,82 @@ export function SettingsManager({
   const [savingCoeff, setSavingCoeff] = useState(false);
   const [coeffSaved, setCoeffSaved] = useState(false);
   const [coeffError, setCoeffError] = useState('');
+
+  // --- Соцсети ---
+  const [vk, setVk] = useState(initialSettings.social_vk);
+  const [telegram, setTelegram] = useState(initialSettings.social_telegram);
+  const [youtube, setYoutube] = useState(initialSettings.social_youtube);
+  const [vkIcon, setVkIcon] = useState(initialSettings.social_vk_icon);
+  const [telegramIcon, setTelegramIcon] = useState(initialSettings.social_telegram_icon);
+  const [youtubeIcon, setYoutubeIcon] = useState(initialSettings.social_youtube_icon);
+  const [uploadingIcon, setUploadingIcon] = useState<'vk' | 'telegram' | 'youtube' | null>(null);
+  const [iconError, setIconError] = useState('');
+  const [savingSocial, setSavingSocial] = useState(false);
+  const [socialSaved, setSocialSaved] = useState(false);
+  const [socialError, setSocialError] = useState('');
+  const vkIconRef = useRef<HTMLInputElement>(null);
+  const telegramIconRef = useRef<HTMLInputElement>(null);
+  const youtubeIconRef = useRef<HTMLInputElement>(null);
+
+  async function uploadSocialIcon(network: 'vk' | 'telegram' | 'youtube', file: File) {
+    if (file.size > 2 * 1024 * 1024) { setIconError('Файл слишком большой (макс. 2 МБ)'); return; }
+    setUploadingIcon(network);
+    setIconError('');
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const ext = file.name.split('.').pop() ?? 'png';
+      const path = `settings/social_${network}_${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('covers').upload(path, file, { upsert: true, contentType: file.type });
+      if (uploadError) { setIconError('Ошибка загрузки: ' + uploadError.message); return; }
+      const { data: { publicUrl } } = supabase.storage.from('covers').getPublicUrl(path);
+      const res = await fetch('/api/admin/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [`social_${network}_icon`]: publicUrl }),
+      });
+      if (!res.ok) { setIconError('Ошибка сохранения URL'); return; }
+      if (network === 'vk') setVkIcon(publicUrl);
+      if (network === 'telegram') setTelegramIcon(publicUrl);
+      if (network === 'youtube') setYoutubeIcon(publicUrl);
+    } catch (e) {
+      setIconError(e instanceof Error ? e.message : 'Ошибка загрузки');
+    } finally {
+      setUploadingIcon(null);
+    }
+  }
+
+  async function clearSocialIcon(network: 'vk' | 'telegram' | 'youtube') {
+    const res = await fetch('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ [`social_${network}_icon`]: '' }),
+    });
+    if (res.ok) {
+      if (network === 'vk') setVkIcon('');
+      if (network === 'telegram') setTelegramIcon('');
+      if (network === 'youtube') setYoutubeIcon('');
+    }
+  }
+
+  async function saveSocial() {
+    setSavingSocial(true);
+    setSocialError('');
+    setSocialSaved(false);
+    const res = await fetch('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ social_vk: vk, social_telegram: telegram, social_youtube: youtube }),
+    });
+    setSavingSocial(false);
+    if (!res.ok) {
+      const json = await res.json();
+      setSocialError(json.error?.message ?? 'Ошибка сохранения');
+      return;
+    }
+    setSocialSaved(true);
+    setTimeout(() => setSocialSaved(false), 2500);
+  }
 
   async function saveCoefficients() {
     setSavingCoeff(true);
@@ -329,6 +412,7 @@ export function SettingsManager({
       <Tabs defaultValue="coefficients">
         <TabsList className="mb-6">
           <TabsTrigger value="coefficients">Коэффициенты</TabsTrigger>
+          <TabsTrigger value="social">Соцсети</TabsTrigger>
           <TabsTrigger value="titles">Титулы</TabsTrigger>
           <TabsTrigger value="skills">Навыки</TabsTrigger>
           <TabsTrigger value="materials">Материалы</TabsTrigger>
@@ -370,6 +454,102 @@ export function SettingsManager({
                 {savingCoeff ? 'Сохраняем…' : 'Сохранить'}
               </Button>
               {coeffSaved && (
+                <span className="flex items-center gap-1 text-sm text-green-600">
+                  <CheckCircle2 size={14} /> Сохранено
+                </span>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* === СОЦСЕТИ === */}
+        <TabsContent value="social">
+          <div className="space-y-6 max-w-lg">
+            <p className="text-sm text-muted-foreground">Ссылки и иконки отображаются в футере сайта. Иконка загружается отдельно — сохраняется сразу при загрузке.</p>
+
+            {iconError && (
+              <Alert variant="destructive">
+                <AlertDescription>{iconError}</AlertDescription>
+              </Alert>
+            )}
+
+            {(['vk', 'telegram', 'youtube'] as const).map((network) => {
+              const labelMap = { vk: 'ВКонтакте', telegram: 'Телеграм', youtube: 'YouTube' };
+              const placeholderMap = { vk: 'https://vk.com/...', telegram: 'https://t.me/...', youtube: 'https://youtube.com/...' };
+              const urlValue = network === 'vk' ? vk : network === 'telegram' ? telegram : youtube;
+              const setUrl = network === 'vk' ? setVk : network === 'telegram' ? setTelegram : setYoutube;
+              const iconUrl = network === 'vk' ? vkIcon : network === 'telegram' ? telegramIcon : youtubeIcon;
+              const fileRef = network === 'vk' ? vkIconRef : network === 'telegram' ? telegramIconRef : youtubeIconRef;
+
+              return (
+                <div key={network} className="rounded-md border p-4 space-y-3">
+                  <p className="text-sm font-medium">{labelMap[network]}</p>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Ссылка</Label>
+                    <Input
+                      type="url"
+                      placeholder={placeholderMap[network]}
+                      value={urlValue}
+                      onChange={(e) => setUrl(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Иконка (PNG / SVG / WebP, до 2 МБ)</Label>
+                    <div className="flex items-center gap-3">
+                      {iconUrl ? (
+                        <div className="relative flex-none">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={iconUrl} alt="" className="w-10 h-10 rounded object-contain border border-border bg-muted/20" />
+                          <button
+                            type="button"
+                            onClick={() => clearSocialIcon(network)}
+                            className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-white flex items-center justify-center"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded border border-dashed border-border bg-muted/20 flex items-center justify-center text-muted-foreground text-xs">
+                          —
+                        </div>
+                      )}
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/png,image/svg+xml,image/webp,image/jpeg"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) { uploadSocialIcon(network, f); e.target.value = ''; }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={uploadingIcon === network}
+                        onClick={() => fileRef.current?.click()}
+                      >
+                        <Upload size={13} className="mr-1.5" />
+                        {uploadingIcon === network ? 'Загружается…' : 'Загрузить'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {socialError && (
+              <Alert variant="destructive">
+                <AlertDescription>{socialError}</AlertDescription>
+              </Alert>
+            )}
+            <div className="flex items-center gap-3">
+              <Button disabled={savingSocial} onClick={saveSocial}>
+                {savingSocial ? 'Сохраняем…' : 'Сохранить ссылки'}
+              </Button>
+              {socialSaved && (
                 <span className="flex items-center gap-1 text-sm text-green-600">
                   <CheckCircle2 size={14} /> Сохранено
                 </span>

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { uuidSchema } from '@/lib/utils/zod';
 
 const schema = z.object({
-  material_id: z.string().uuid(),
+  material_id: uuidSchema,
   quantity: z.number().positive(),
   contact_phone: z.string().regex(/^\+?[0-9\s\-(]{7,20}$/).optional(),
   contact_telegram: z.string().min(1).max(100).optional(),

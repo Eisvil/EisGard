@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { buildQuickpayUrl } from '@/lib/payments/ymoney';
+import { uuidSchema } from '@/lib/utils/zod';
 
 const schema = z.object({
-  object_id: z.string().uuid(),
-  slot_id: z.string().uuid().optional(),
+  object_id: uuidSchema.nullable().optional(),
+  slot_id: uuidSchema.nullable().optional(),
   amount_kopecks: z.number().int().min(10000, 'Минимальная сумма 100 ₽'),
   display_name: z.string().min(2).max(120),
   is_anonymous: z.boolean(),
-  object_slug: z.string(),
+  object_slug: z.string().nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,25 +41,29 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   const userId: string | null = user?.id ?? null;
 
-  const { data: object } = await supabase
-    .from('objects')
-    .select('id, name, status')
-    .eq('id', object_id)
-    .neq('status', 'draft')
-    .maybeSingle() as { data: { id: string; name: string; status: string } | null };
+  let objectName = 'Живое Городище';
+  if (object_id) {
+    const { data: obj } = await supabase
+      .from('objects')
+      .select('id, name, status')
+      .eq('id', object_id)
+      .neq('status', 'draft')
+      .maybeSingle() as { data: { id: string; name: string; status: string } | null };
 
-  if (!object) {
-    return NextResponse.json(
-      { error: { code: 'NOT_FOUND', message: 'Объект не найден' } },
-      { status: 404 }
-    );
+    if (!obj) {
+      return NextResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Объект не найден' } },
+        { status: 404 }
+      );
+    }
+    objectName = obj.name;
   }
 
   const { data: donation, error } = await supabase
     .from('donations')
     .insert({
       user_id: userId,
-      object_id,
+      object_id: object_id ?? null,
       slot_id: slot_id ?? null,
       amount_kopecks,
       display_name,
@@ -85,12 +90,16 @@ export async function POST(request: NextRequest) {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const successURL = object_slug
+    ? `${siteUrl}/objects/${object_slug}?donated=true`
+    : `${siteUrl}/?donated=true`;
+
   const redirect_url = buildQuickpayUrl({
     wallet,
     sum: amount_kopecks / 100,
     label: donation.id,
-    targets: object.name,
-    successURL: `${siteUrl}/objects/${object_slug}?donated=true`,
+    targets: objectName,
+    successURL,
   });
 
   return NextResponse.json({ data: { donation_id: donation.id, redirect_url } }, { status: 201 });

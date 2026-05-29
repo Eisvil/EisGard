@@ -20,6 +20,7 @@ type Slot = {
   sort_order: number;
   image_url: string | null;
   description: string | null;
+  historical_note: Record<string, unknown> | null;
 };
 
 type ObjectWithSlots = {
@@ -35,6 +36,8 @@ type ObjectWithSlots = {
   map_position_x: number | null;
   map_position_y: number | null;
   sort_order: number;
+  allow_comments: boolean;
+  historical_note: Record<string, unknown> | null;
   slots: Slot[];
 };
 

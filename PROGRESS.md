@@ -273,6 +273,66 @@
 - [x] `src/app/(public)/privacy/page.tsx` — добавлены `<Header />` и `<Footer />`
 - [x] `src/app/(public)/personal-data/page.tsx` — добавлены `<Header />` и `<Footer />`
 
+### Дизайн-рефакторинг: типографика, токены, иконки (2026-05-28)
+- [x] Lora (Google Fonts) — `next/font/google`, subsets latin+cyrillic, CSS-переменная `--font-lora`; `--serif` обновлён, Palatino Linotype — фоллбэк
+- [x] Fluid type scale (Major Third 1.25) — 9 уровней `--text-xs`…`--text-4xl` через `clamp()` добавлены в `globals.css`
+- [x] 8px spacing grid — токены `--space-1`…`--space-20` в `globals.css`
+- [x] Warm shadow scale — `--shadow-xs/sm/md/lg` (`rgba(80,68,43,…)`) в `globals.css`; заменяют все inline-тени в `components.css`/`layout.css`/`map.css`
+- [x] Border radius scale — `--radius-sm/md/lg/xl/pill` в `globals.css`; заменяют хардкодные значения
+- [x] Semantic color tokens — `--ink-soft`, `--ink-muted`, `--ink-faint`, `--surface-hover` в `globals.css`; ~20 хардкодных hex (#777064, #938878 и др.) заменены переменными
+- [x] `focus-visible` глобальный стиль + `@media (prefers-reduced-motion)` — добавлены в `globals.css` (accessibility)
+- [x] `components.css` — type-scale, shadow/radius/color токены применены (~100 замен), sticky thead и alternating rows для `.history-table`
+- [x] `layout.css` — навигация, заголовки, футер: type-scale и color-tokens
+- [x] `map.css` — player-hud, hotspot-label, legend: type-scale и shadow-tokens
+- [x] `Footer.tsx` — 3 Unicode-символа (◈▤♧) → `lucide-react` (`Eye`, `BookOpen`, `Leaf`)
+- [x] `MapSection.tsx` — 7 Unicode-символов (★♧◷♙⚒♟◆) → `lucide-react` (`Star`, `Coins`, `Clock`, `CreditCard`, `Package`, `Users`, `Handshake`)
+- [x] `admin.css` — 13 shadcn HSL-переменных сдвинуты с cold neutral на тёплые paper/olive (background, foreground, primary, border, ring и др.)
+- Ветка: `design/typography-tokens-refactor` | `npm run build` — 62 страницы, 0 ошибок
+
+### Страница объекта — расширение (2026-05-28)
+- [x] `supabase/migrations/20260528000001_comments.sql` — таблицы `object_comments`, `comment_bans`; `allow_comments` в `objects`; подписка min 10000 копеек (100 ₽); Storage bucket `comment-photos`
+- [x] `src/styles/components.css` — max-width 1100px; `.public-page-layout`; slot-card-image/description; historical-note-accordion; comments section (card, meta, photos, overlay, editor, ban-picker, load-more); support-modal-tabs
+- [x] `src/components/features/DonateModal.tsx` — тип `SlotForDonate` расширен: `image_url`, `description`
+- [x] `src/components/features/SlotsSection.tsx` — рендер `image_url` и `description` слота; `objectName` prop; SupportModal вместо DonateModal
+- [x] `src/components/features/SupportModal.tsx` — единый модал «Разовый / Ежемесячно», min 100 ₽; работает без `object_id` (общий проект)
+- [x] `src/components/features/HistoricalNoteAccordion.tsx` — аккордеон с Tiptap read-only рендером
+- [x] `src/components/features/CommentEditor.tsx` — Tiptap (bold/italic/link/quote) + 5 фото; ban-message
+- [x] `src/components/features/CommentCard.tsx` — карточка комментария: мета, тело, фото, lightbox, ответы, редактирование, удаление, бан
+- [x] `src/components/features/CommentsSection.tsx` — список + форма + Realtime + пагинация «Показать ещё»
+- [x] `src/app/api/objects/[slug]/comments/route.ts` — GET (список+ответы+пагинация), POST (auth, ban check)
+- [x] `src/app/api/comments/[id]/route.ts` — PATCH (edit own comment within 24h)
+- [x] `src/app/api/admin/comments/[id]/route.ts` — DELETE (soft delete)
+- [x] `src/app/api/admin/comments/[id]/ban/route.ts` — POST (бан на 1h/1d/1m/permanent)
+- [x] `src/app/api/donations/initiate/route.ts` — `object_id`/`slot_id` опциональны (общий проект)
+- [x] `src/app/api/donations/subscribe/route.ts` — `object_id` опционален; min 100 ₽ (было 300 ₽)
+- [x] `src/components/features/admin/ObjectForm.tsx` — `allow_comments` чекбокс
+- [x] `src/components/features/admin/ObjectEditTabs.tsx` — тип `ObjectWithSlots` расширен: `allow_comments`
+- [x] `src/app/api/admin/objects/[id]/route.ts` — Zod-схема: `allow_comments: z.boolean().optional()`
+- [x] `src/app/(public)/objects/[slug]/page.tsx` — 1100px, исторсправка, комментарии, слоты с фото/описанием, убран блок ежемесячной подписки
+
+### UI полировка: футер, соцсети, кнопка поддержки (2026-05-28)
+- [x] `Footer.tsx` — преобразован в async Server Component; фетчит `social_vk/telegram/youtube` и `*_icon` из таблицы `settings`
+- [x] `layout.css` — `.footer-inner` padding-top: 229px (поднято содержимое); `.site-footer` min-height: 124px (убрано лишнее пространство снизу)
+- [x] `Footer.tsx` — обновлены тексты принципов: «Открытость», «Историческая основа», «Гармоничность» (переименован с «Устойчивость»)
+- [x] `Footer.tsx` + `layout.css` — социальные иконки перенесены из `.footer-brand` в отдельный 5-й столбец `.footer-inner` grid; `.social` — standalone flex-column; `.social-row` — flex-row для иконок
+- [x] `layout.css` — `.social a` убраны border/background (окружности удалены); `.social svg` — 40×40 fill currentColor; viewBox скорректированы для VK (`0.4 1.6 28 28`) и Telegram (`-1.7 0.2 28 28`)
+- [x] `MapSection.tsx` — кнопка «Поддержать проект» под статистикой (после `</dl>`), открывает `SupportModal` без привязки к объекту
+- [x] `src/app/api/admin/settings/route.ts` — `ALLOWED_KEYS` и Zod-схема расширены: `social_vk`, `social_telegram`, `social_youtube`, `social_vk_icon`, `social_telegram_icon`, `social_youtube_icon`
+- [x] `src/app/(admin)/admin/settings/page.tsx` — запрос расширен: +6 социальных ключей; `initialSettings` содержит все URL + icon URL
+- [x] `SettingsManager.tsx` — вкладка «Соцсети»: поля URL + загрузка иконок (PNG/SVG/WebP/JPEG) в Storage `covers/settings/social_{network}_{ts}.ext`; превью иконки + кнопка очистки; `useRef` для 3 скрытых file input
+- [x] Supabase Storage `covers` bucket — добавлен `image/svg+xml` в `allowed_mime_types` через SQL (Supabase MCP)
+
+### Историческая справка для слотов (2026-05-28)
+- [x] `supabase/migrations/20260528000002_slots_historical_note.sql` — ADD COLUMN `historical_note JSONB` в `slots`
+- [x] `src/app/api/admin/objects/[id]/slots/route.ts` — Zod-схема POST расширена: `historical_note`
+- [x] `src/app/api/admin/objects/[id]/slots/[slotId]/route.ts` — Zod-схема PATCH расширена: `historical_note`
+- [x] `src/components/features/DonateModal.tsx` — тип `SlotForDonate` расширен: `historical_note`
+- [x] `src/app/(public)/objects/[slug]/page.tsx` — `SlotRow` тип + select-запрос + маппинг расширены: `historical_note`
+- [x] `src/components/features/SlotsSection.tsx` — аккордеон `HistoricalNoteAccordion` под каждым слотом; проверка `hasContent()` — не показывать если пусто
+- [x] `src/styles/components.css` — `.slot-card { flex-wrap: wrap }` + новый класс `.slot-card-historical-note`
+- [x] `src/components/features/admin/SlotsManager.tsx` — `TiptapEditor` для `historical_note` в форме добавления и редактирования слота
+- [x] `src/components/features/admin/ObjectEditTabs.tsx` — тип `Slot` расширен: `historical_note`
+
 ## В работе
 _(пусто)_
 

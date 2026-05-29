@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { buildQuickpayUrl } from '@/lib/payments/ymoney';
+import { uuidSchema } from '@/lib/utils/zod';
 
 const schema = z.object({
-  object_id: z.string().uuid(),
-  amount_kopecks: z.number().int().min(30000, 'Минимальная сумма 300 ₽'),
+  object_id: uuidSchema.nullable().optional(),
+  amount_kopecks: z.number().int().min(10000, 'Минимальная сумма 100 ₽'),
   display_name: z.string().min(2).max(120),
   is_anonymous: z.boolean(),
-  object_slug: z.string(),
+  object_slug: z.string().nullable().optional(),
 });
 
 type AnyClient = any;
@@ -50,43 +51,60 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { data: object } = await supabase
-    .from('objects')
-    .select('id, name, status')
-    .eq('id', object_id)
-    .neq('status', 'draft')
-    .maybeSingle() as { data: { id: string; name: string; status: string } | null };
+  let objectName = 'Живое Городище';
 
-  if (!object) {
-    return NextResponse.json(
-      { error: { code: 'NOT_FOUND', message: 'Объект не найден' } },
-      { status: 404 }
-    );
+  if (object_id) {
+    const { data: obj } = await supabase
+      .from('objects')
+      .select('id, name, status')
+      .eq('id', object_id)
+      .neq('status', 'draft')
+      .maybeSingle() as { data: { id: string; name: string; status: string } | null };
+
+    if (!obj) {
+      return NextResponse.json(
+        { error: { code: 'NOT_FOUND', message: 'Объект не найден' } },
+        { status: 404 }
+      );
+    }
+    objectName = obj.name;
   }
 
   // Блокируем только подтверждённые подписки (active / paused)
-  const { data: existing } = await supabase
+  const existingQuery = supabase
     .from('subscriptions')
     .select('id')
     .eq('user_id', user.id)
-    .eq('object_id', object_id)
-    .in('status', ['active', 'paused'])
-    .maybeSingle() as { data: { id: string } | null };
+    .in('status', ['active', 'paused']);
+
+  if (object_id) {
+    existingQuery.eq('object_id', object_id);
+  } else {
+    existingQuery.is('object_id', null);
+  }
+
+  const { data: existing } = await existingQuery.maybeSingle() as { data: { id: string } | null };
 
   if (existing) {
     return NextResponse.json(
-      { error: { code: 'ALREADY_SUBSCRIBED', message: 'У вас уже есть активная подписка на этот объект' } },
+      { error: { code: 'ALREADY_SUBSCRIBED', message: 'У вас уже есть активная подписка' } },
       { status: 409 }
     );
   }
 
-  // Удаляем брошенные pending-подписки этого пользователя на объект
-  await supabase
+  // Удаляем брошенные pending-подписки
+  const deleteQuery = supabase
     .from('subscriptions')
     .delete()
     .eq('user_id', user.id)
-    .eq('object_id', object_id)
     .eq('status', 'pending');
+
+  if (object_id) {
+    deleteQuery.eq('object_id', object_id);
+  } else {
+    deleteQuery.is('object_id', null);
+  }
+  await deleteQuery;
 
   const nextPaymentDate = firstOfNextMonth();
 
@@ -144,12 +162,16 @@ export async function POST(request: NextRequest) {
   }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+  const successURL = object_slug
+    ? `${siteUrl}/objects/${object_slug}?donated=true`
+    : `${siteUrl}/?donated=true`;
+
   const redirect_url = buildQuickpayUrl({
     wallet,
     sum: amount_kopecks / 100,
     label: donation.id,
-    targets: `Ежемесячная поддержка: ${object.name}`,
-    successURL: `${siteUrl}/objects/${object_slug}?donated=true`,
+    targets: `Ежемесячная поддержка: ${objectName}`,
+    successURL,
   });
 
   return NextResponse.json(

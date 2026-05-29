@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -39,7 +39,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { CheckCircle2, Globe } from 'lucide-react';
+import { CheckCircle2, Globe, Upload, X } from 'lucide-react';
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 
 type App = {
   id: string;
@@ -52,6 +53,7 @@ type App = {
   contact_phone: string | null;
   status: string;
   logo_url: string | null;
+  partner_website_url: string | null;
   admin_note: string | null;
   created_at: string;
   objects: { name: string } | null;
@@ -94,25 +96,83 @@ export function PartnerAppsManager({ initialApps }: Props) {
       .catch(() => { setError('Не удалось загрузить заявки'); setLoading(false); });
   }, [initialApps]);
 
-  // Approve dialog state
-  const [approveApp, setApproveApp] = useState<App | null>(null);
+  // --- Shared logo/website state (reused by approve + edit dialogs) ---
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState('');
+  const [partnerWebsiteUrl, setPartnerWebsiteUrl] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Approve dialog ---
+  const [approveApp, setApproveApp] = useState<App | null>(null);
   const [publishPartner, setPublishPartner] = useState(true);
   const [adminNote, setAdminNote] = useState('');
   const [approveSuccess, setApproveSuccess] = useState(false);
 
-  // Reject dialog
+  // --- Edit dialog (approved apps) ---
+  const [editApp, setEditApp] = useState<App | null>(null);
+  const [editSuccess, setEditSuccess] = useState(false);
+
+  // --- Reject dialog ---
   const [rejectApp, setRejectApp] = useState<App | null>(null);
   const [rejectNote, setRejectNote] = useState('');
+
+  // --- Delete dialog ---
+  const [deleteApp, setDeleteApp] = useState<App | null>(null);
+
+  function resetLogoState() {
+    setLogoFile(null);
+    setLogoUrl('');
+    setLogoPreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
 
   const openApprove = (app: App) => {
     setApproveApp(app);
     setLogoUrl(app.logo_url ?? '');
+    setLogoPreview(app.logo_url ?? '');
+    setLogoFile(null);
+    setPartnerWebsiteUrl(app.partner_website_url ?? '');
     setPublishPartner(true);
     setAdminNote('');
     setApproveSuccess(false);
     setError('');
   };
+
+  const openEdit = (app: App) => {
+    setEditApp(app);
+    setLogoUrl(app.logo_url ?? '');
+    setLogoPreview(app.logo_url ?? '');
+    setLogoFile(null);
+    setPartnerWebsiteUrl(app.partner_website_url ?? '');
+    setEditSuccess(false);
+    setError('');
+  };
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    setLogoUrl('');
+    setLogoPreview(URL.createObjectURL(file));
+  }
+
+  function clearLogo() {
+    resetLogoState();
+  }
+
+  async function uploadLogoIfNeeded(appId: string): Promise<string> {
+    if (!logoFile) return logoUrl;
+    const supabase = createBrowserSupabaseClient();
+    const ext = logoFile.name.split('.').pop() ?? 'jpg';
+    const path = `covers/partners/${appId}/${Date.now()}.${ext}`;
+    const { data: uploadData, error: uploadErr } = await supabase.storage
+      .from('covers')
+      .upload(path, logoFile, { upsert: true });
+    if (uploadErr) throw new Error('Ошибка загрузки логотипа');
+    const { data: { publicUrl } } = supabase.storage.from('covers').getPublicUrl(uploadData.path);
+    return publicUrl;
+  }
 
   const handleStatusChange = useCallback(async (id: string, status: string, extra?: Record<string, unknown>) => {
     setLoading(true);
@@ -125,7 +185,10 @@ export function PartnerAppsManager({ initialApps }: Props) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? 'Ошибка');
-      setApps(prev => prev.map(a => a.id === id ? { ...a, status, admin_note: (extra?.admin_note as string) ?? a.admin_note } : a));
+      setApps(prev => prev.map(a => a.id === id
+        ? { ...a, status, logo_url: (extra?.logo_url as string) ?? a.logo_url, partner_website_url: (extra?.partner_website_url as string) ?? a.partner_website_url, admin_note: (extra?.admin_note as string) ?? a.admin_note }
+        : a
+      ));
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка');
@@ -137,12 +200,45 @@ export function PartnerAppsManager({ initialApps }: Props) {
 
   async function handleApprove() {
     if (!approveApp) return;
+    setLoading(true);
+    let finalLogoUrl = logoUrl;
+    try {
+      finalLogoUrl = await uploadLogoIfNeeded(approveApp.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка загрузки');
+      setLoading(false);
+      return;
+    } finally {
+      setLoading(false);
+    }
     const ok = await handleStatusChange(approveApp.id, 'approved', {
       publish_partner: publishPartner,
-      logo_url: logoUrl || undefined,
+      logo_url: finalLogoUrl || undefined,
+      partner_website_url: partnerWebsiteUrl || undefined,
       admin_note: adminNote || undefined,
     });
     if (ok) setApproveSuccess(true);
+  }
+
+  async function handleEdit() {
+    if (!editApp) return;
+    setLoading(true);
+    let finalLogoUrl = logoUrl;
+    try {
+      finalLogoUrl = await uploadLogoIfNeeded(editApp.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка загрузки');
+      setLoading(false);
+      return;
+    } finally {
+      setLoading(false);
+    }
+    const ok = await handleStatusChange(editApp.id, 'approved', {
+      publish_partner: true,
+      logo_url: finalLogoUrl || undefined,
+      partner_website_url: partnerWebsiteUrl || undefined,
+    });
+    if (ok) setEditSuccess(true);
   }
 
   async function handleReject() {
@@ -157,7 +253,71 @@ export function PartnerAppsManager({ initialApps }: Props) {
     await handleStatusChange(app.id, 'contacted');
   }
 
+  async function handleDelete() {
+    if (!deleteApp) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/partner-applications/${deleteApp.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error?.message ?? 'Ошибка удаления');
+      }
+      setApps(prev => prev.filter(a => a.id !== deleteApp.id));
+      setDeleteApp(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Ошибка');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const filtered = filterStatus === 'all' ? apps : apps.filter(a => a.status === filterStatus);
+
+  // Shared logo upload UI (used in both approve and edit dialogs)
+  function LogoUploadFields() {
+    return (
+      <div className="space-y-1.5">
+        <Label>Логотип (необязательно)</Label>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/svg+xml"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {logoPreview ? (
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoPreview} alt="Логотип" className="h-14 w-14 object-contain rounded border border-border bg-muted" />
+            <div className="flex flex-col gap-1">
+              <Button type="button" size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload size={14} className="mr-1" />Заменить
+              </Button>
+              <Button type="button" size="sm" variant="ghost" className="text-muted-foreground" onClick={clearLogo}>
+                <X size={14} className="mr-1" />Удалить
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button type="button" variant="outline" className="w-full" onClick={() => fileInputRef.current?.click()}>
+            <Upload size={14} className="mr-2" />Выбрать файл
+          </Button>
+        )}
+        {!logoFile && (
+          <div className="relative mt-1">
+            <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              className="pl-8 text-xs"
+              placeholder="или вставьте URL логотипа"
+              value={logoUrl}
+              onChange={e => { setLogoUrl(e.target.value); setLogoPreview(e.target.value); }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -244,6 +404,16 @@ export function PartnerAppsManager({ initialApps }: Props) {
                     </Button>
                   </div>
                 )}
+                {app.status === 'approved' && (
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => openEdit(app)} disabled={loading}>
+                      Редактировать
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => setDeleteApp(app)} disabled={loading}>
+                      Удалить
+                    </Button>
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ))}
@@ -251,7 +421,7 @@ export function PartnerAppsManager({ initialApps }: Props) {
       </Table>
 
       {/* Approve dialog */}
-      <Dialog open={!!approveApp} onOpenChange={open => { if (!open) { setApproveApp(null); setApproveSuccess(false); } }}>
+      <Dialog open={!!approveApp} onOpenChange={open => { if (!open) { setApproveApp(null); setApproveSuccess(false); resetLogoState(); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Одобрить заявку</DialogTitle>
@@ -267,9 +437,7 @@ export function PartnerAppsManager({ initialApps }: Props) {
           ) : (
             <>
               <div className="space-y-4 py-2">
-                <div className="text-sm">
-                  <span className="font-medium">{approveApp?.org_name}</span>
-                </div>
+                <div className="text-sm font-medium">{approveApp?.org_name}</div>
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
@@ -283,18 +451,21 @@ export function PartnerAppsManager({ initialApps }: Props) {
                   </Label>
                 </div>
                 {publishPartner && (
-                  <div className="space-y-1.5">
-                    <Label>URL логотипа (необязательно)</Label>
-                    <div className="relative">
-                      <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        className="pl-8"
-                        placeholder="https://example.com/logo.png"
-                        value={logoUrl}
-                        onChange={e => setLogoUrl(e.target.value)}
-                      />
+                  <>
+                    <LogoUploadFields />
+                    <div className="space-y-1.5">
+                      <Label>Сайт партнёра (необязательно)</Label>
+                      <div className="relative">
+                        <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          className="pl-8"
+                          placeholder="https://partner.ru"
+                          value={partnerWebsiteUrl}
+                          onChange={e => setPartnerWebsiteUrl(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
                 <div className="space-y-1.5">
                   <Label>Заметка (необязательно)</Label>
@@ -307,9 +478,50 @@ export function PartnerAppsManager({ initialApps }: Props) {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setApproveApp(null)}>Отмена</Button>
+                <Button variant="outline" onClick={() => { setApproveApp(null); resetLogoState(); }}>Отмена</Button>
                 <Button onClick={handleApprove} disabled={loading}>
                   {loading ? 'Сохраняю...' : 'Одобрить'}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog (approved apps) */}
+      <Dialog open={!!editApp} onOpenChange={open => { if (!open) { setEditApp(null); setEditSuccess(false); resetLogoState(); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Редактировать партнёра</DialogTitle>
+          </DialogHeader>
+          {editSuccess ? (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <CheckCircle2 className="text-green-500" size={40} />
+              <p className="text-sm text-center">Данные партнёра обновлены.</p>
+              <Button onClick={() => { setEditApp(null); setEditSuccess(false); }}>Закрыть</Button>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-4 py-2">
+                <div className="text-sm font-medium">{editApp?.org_name}</div>
+                <LogoUploadFields />
+                <div className="space-y-1.5">
+                  <Label>Сайт партнёра (необязательно)</Label>
+                  <div className="relative">
+                    <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      className="pl-8"
+                      placeholder="https://partner.ru"
+                      value={partnerWebsiteUrl}
+                      onChange={e => setPartnerWebsiteUrl(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setEditApp(null); resetLogoState(); }}>Отмена</Button>
+                <Button onClick={handleEdit} disabled={loading}>
+                  {loading ? 'Сохраняю...' : 'Сохранить'}
                 </Button>
               </DialogFooter>
             </>
@@ -342,6 +554,29 @@ export function PartnerAppsManager({ initialApps }: Props) {
               disabled={loading}
             >
               Отклонить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete dialog */}
+      <AlertDialog open={!!deleteApp} onOpenChange={open => { if (!open) setDeleteApp(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить партнёра?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium">{deleteApp?.org_name}</span> — заявка и карточка партнёра
+              будут удалены безвозвратно.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDelete}
+              disabled={loading}
+            >
+              Удалить
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

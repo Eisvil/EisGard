@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { uuidSchema } from '@/lib/utils/zod';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -13,7 +14,7 @@ const patchSchema = z.object({
     .optional()
     .nullable(),
   in_chronicle: z.boolean().optional(),
-  skill_ids: z.array(z.string().uuid()).optional(),
+  skill_ids: z.array(uuidSchema).optional(),
   avatar_url: z.string().url().optional().nullable(),
 });
 

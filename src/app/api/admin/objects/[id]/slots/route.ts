@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 const createSlotSchema = z.object({
-  slot_type:   z.enum(['money', 'labor']),
-  name:        z.string().min(2).max(120),
-  goal_value:  z.number().int().positive(),
-  unit:        z.string().min(1).max(20).default('RUB'),
-  sort_order:  z.number().int().optional(),
-  image_url:   z.string().url().optional().nullable(),
-  description: z.string().max(1000).optional().nullable(),
+  slot_type:       z.enum(['money', 'labor']),
+  name:            z.string().min(2).max(120),
+  goal_value:      z.number().int().positive(),
+  unit:            z.string().min(1).max(20).default('RUB'),
+  sort_order:      z.number().int().optional(),
+  image_url:       z.string().url().optional().nullable(),
+  description:     z.string().max(1000).optional().nullable(),
+  historical_note: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,8 +87,9 @@ export async function POST(request: NextRequest, { params }: Params) {
       goal_value:  data.goal_value,
       unit:        data.unit,
       sort_order:  data.sort_order ?? 0,
-      image_url:   data.image_url ?? null,
-      description: data.description ?? null,
+      image_url:       data.image_url ?? null,
+      description:     data.description ?? null,
+      historical_note: data.historical_note ?? null,
     })
     .select()
     .single();

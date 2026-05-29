@@ -14,8 +14,9 @@
 
 ## Стек технологий
 - Frontend: Next.js 16 (App Router, Turbopack), TypeScript
+- Шрифты: Lora (Google Fonts, `next/font/google`, Latin+Cyrillic) → CSS var `--font-lora`
 - CSS: кастомная дизайн-система (src/styles/), Tailwind только для /admin
-- UI-компоненты: shadcn/ui только для /admin/*
+- UI-компоненты: shadcn/ui только для /admin/*; lucide-react для иконок на публичных страницах
 - Backend: Supabase (PostgreSQL 15, Auth, RLS, Storage, Realtime)
 - Деплой: Vercel (фронт), Beget VPS (PDF, фоновые задачи)
 - Платежи: ЮMoney (вебхуки), ручное подтверждение Т-Банк / Сбербанк

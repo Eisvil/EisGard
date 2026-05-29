@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { uuidSchema } from '@/lib/utils/zod';
 
 const schema = z.object({
-  camp_id: z.string().uuid(),
-  skill_ids: z.array(z.string().uuid()).default([]),
+  camp_id: uuidSchema,
+  skill_ids: z.array(uuidSchema).default([]),
   comment: z.string().max(1000).optional(),
 });
 

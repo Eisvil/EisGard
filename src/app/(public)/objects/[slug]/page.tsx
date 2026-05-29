@@ -3,10 +3,13 @@ import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { formatMoney, getProgress } from '@/lib/utils/formatMoney';
 import { OBJECT_STATUS } from '@/lib/constants/objectStatus';
+import { Header } from '@/components/layouts/Header';
+import { Footer } from '@/components/layouts/Footer';
 import { SlotsSection } from '@/components/features/SlotsSection';
 import { DonatedToast } from '@/components/features/DonatedToast';
-import { SubscribeSectionClient } from '@/components/features/SubscribeSectionClient';
 import { ObjectViewTracker } from '@/components/features/ObjectViewTracker';
+import { HistoricalNoteAccordion } from '@/components/features/HistoricalNoteAccordion';
+import { CommentsSection } from '@/components/features/CommentsSection';
 import type { SlotForDonate } from '@/components/features/DonateModal';
 
 type ObjectRow = {
@@ -16,9 +19,11 @@ type ObjectRow = {
   zone: string;
   status: string;
   description: unknown;
+  historical_note: Record<string, unknown> | null;
   cover_url: string | null;
   total_goal_rub: number;
   total_raised_rub: number;
+  allow_comments: boolean;
 };
 
 type SlotRow = {
@@ -28,6 +33,9 @@ type SlotRow = {
   current_value: number;
   unit: string;
   slot_type: string;
+  image_url: string | null;
+  description: string | null;
+  historical_note: Record<string, unknown> | null;
 };
 
 type ChronicleRow = {
@@ -63,31 +71,36 @@ export default async function ObjectPage({
 
   const supabase = await createServerSupabaseClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const isLoggedIn = !!user;
 
   let profileName: string | undefined;
+  let profileRole: string | undefined;
   if (user) {
     const { data: prof } = await supabase
       .from('profiles')
-      .select('full_name')
+      .select('full_name, role')
       .eq('id', user.id)
-      .maybeSingle() as { data: { full_name: string } | null };
+      .maybeSingle() as { data: { full_name: string; role: string } | null };
     profileName = prof?.full_name ?? undefined;
+    profileRole = prof?.role ?? undefined;
   }
 
-  const { data: rawObject } = await supabase
+  const isAdmin = profileRole === 'admin' || profileRole === 'moderator';
+
+  let objectQuery = supabase
     .from('objects')
-    .select('id, slug, name, zone, status, description, cover_url, total_goal_rub, total_raised_rub')
-    .eq('slug', slug)
-    .neq('status', 'draft')
-    .maybeSingle();
+    .select('id, slug, name, zone, status, description, historical_note, cover_url, total_goal_rub, total_raised_rub, allow_comments')
+    .eq('slug', slug);
+
+  if (!isAdmin) objectQuery = objectQuery.neq('status', 'draft');
+
+  const { data: rawObject } = await objectQuery.maybeSingle();
 
   const object = rawObject as ObjectRow | null;
   if (!object) notFound();
 
   const { data: rawSlots } = await supabase
     .from('slots')
-    .select('id, name, goal_value, current_value, unit, slot_type')
+    .select('id, name, goal_value, current_value, unit, slot_type, image_url, description, historical_note')
     .eq('object_id', object.id)
     .eq('slot_type', 'money')
     .eq('is_closed', false)
@@ -101,7 +114,7 @@ export default async function ObjectPage({
     .order('created_at', { ascending: false })
     .limit(20);
 
-  const slots = (rawSlots ?? []) as SlotRow[];
+  const slots = (rawSlots ?? []) as unknown as SlotRow[];
   const chronicle = (rawChronicle ?? []) as ChronicleRow[];
 
   const statusInfo = OBJECT_STATUS[object.status as keyof typeof OBJECT_STATUS] ?? OBJECT_STATUS.planned;
@@ -112,16 +125,32 @@ export default async function ObjectPage({
     goal_value: s.goal_value,
     current_value: s.current_value,
     unit: s.unit,
+    image_url: s.image_url,
+    description: s.description,
+    historical_note: s.historical_note,
   }));
 
+  const currentUser = user
+    ? { id: user.id, name: profileName, role: profileRole }
+    : null;
+
   return (
-    <div className="object-page-layout">
+    <>
+      <Header />
+      <main>
+      <div className="object-page-layout">
       <ObjectViewTracker objectId={object.id} />
       <DonatedToast show={donated === 'true'} />
 
       <nav style={{ marginBottom: '16px', fontSize: '14px', fontFamily: 'var(--sans)', color: 'var(--olive-soft)' }}>
         <Link href="/" className="text-link" style={{ fontSize: '14px' }}>← На главную</Link>
       </nav>
+
+      {isAdmin && object.status === 'draft' && (
+        <div style={{ marginBottom: '16px', padding: '10px 16px', background: '#fff8e1', border: '1px solid #f0c040', borderRadius: '8px', fontFamily: 'var(--sans)', fontSize: '13px', color: '#7a6010' }}>
+          Черновик — страница видна только администраторам. <Link href={`/admin/objects/${object.id}`} className="text-link" style={{ fontSize: '13px' }}>Редактировать в админке →</Link>
+        </div>
+      )}
 
       {object.cover_url ? (
         <div className="object-hero">
@@ -160,15 +189,13 @@ export default async function ObjectPage({
 
       <div style={{ marginTop: '28px' }}>
         <div className="eyebrow" style={{ marginBottom: '20px' }}>Поддержать объект</div>
-        <SlotsSection slots={moneySlots} objectId={object.id} objectSlug={object.slug} defaultName={profileName} />
-        {isLoggedIn && (
-          <SubscribeSectionClient
-            objectId={object.id}
-            objectSlug={object.slug}
-            objectName={object.name}
-            defaultName={profileName}
-          />
-        )}
+        <SlotsSection
+          slots={moneySlots}
+          objectId={object.id}
+          objectSlug={object.slug}
+          objectName={object.name}
+          defaultName={profileName}
+        />
       </div>
 
       {getDescription(object.description) && (
@@ -176,6 +203,10 @@ export default async function ObjectPage({
           <h2>Об объекте</h2>
           <p>{getDescription(object.description)}</p>
         </div>
+      )}
+
+      {object.historical_note && (
+        <HistoricalNoteAccordion content={object.historical_note} />
       )}
 
       {chronicle.length > 0 && (
@@ -197,6 +228,16 @@ export default async function ObjectPage({
           </div>
         </div>
       )}
-    </div>
+
+      <CommentsSection
+        objectId={object.id}
+        objectSlug={object.slug}
+        allowComments={object.allow_comments}
+        currentUser={currentUser}
+      />
+      </div>
+      </main>
+      <Footer />
+    </>
   );
 }

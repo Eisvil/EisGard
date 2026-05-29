@@ -3,14 +3,15 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 
 const patchSlotSchema = z.object({
-  name:          z.string().min(2).max(120).optional(),
-  goal_value:    z.number().int().positive().optional(),
-  unit:          z.string().min(1).max(20).optional(),
-  is_closed:     z.boolean().optional(),
-  sort_order:    z.number().int().optional(),
-  current_value: z.number().int().min(0).optional(),
-  image_url:     z.string().url().optional().nullable(),
-  description:   z.string().max(1000).optional().nullable(),
+  name:            z.string().min(2).max(120).optional(),
+  goal_value:      z.number().int().positive().optional(),
+  unit:            z.string().min(1).max(20).optional(),
+  is_closed:       z.boolean().optional(),
+  sort_order:      z.number().int().optional(),
+  current_value:   z.number().int().min(0).optional(),
+  image_url:       z.string().url().optional().nullable(),
+  description:     z.string().max(1000).optional().nullable(),
+  historical_note: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

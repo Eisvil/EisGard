@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
 import { awardPoints } from '@/lib/points/awardPoints';
+import { uuidSchema } from '@/lib/utils/zod';
 
 type AnyClient = ReturnType<typeof import('@/lib/supabase/server')['createServerSupabaseClient']> extends Promise<infer T> ? T : never;
 
@@ -14,8 +15,8 @@ const manualSchema = z.object({
   amount_kopecks: z.number().int().min(10000, 'Минимальная сумма 100 ₽'),
   display_name: z.string().min(2).max(120),
   donor_email: z.string().email().optional().nullable(),
-  object_id: z.string().uuid().optional().nullable(),
-  slot_id: z.string().uuid().optional().nullable(),
+  object_id: uuidSchema.optional().nullable(),
+  slot_id: uuidSchema.optional().nullable(),
   is_anonymous: z.boolean().default(false),
   payment_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });

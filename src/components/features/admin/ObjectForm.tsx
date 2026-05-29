@@ -13,6 +13,7 @@ import { OBJECT_ICONS } from '@/lib/constants/objectIcons';
 import { slugify } from '@/lib/utils/slugify';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { Upload, X } from 'lucide-react';
+import { TiptapEditor } from '@/components/features/admin/TiptapEditor';
 
 type ZoneKey = 'craft' | 'public' | 'farming' | 'military' | 'residential';
 type StatusKey = 'draft' | 'planned' | 'building' | 'done' | 'working';
@@ -30,6 +31,8 @@ type ObjectRow = {
   map_position_x: number | null;
   map_position_y: number | null;
   sort_order: number;
+  allow_comments: boolean;
+  historical_note: Record<string, unknown> | null;
   slots?: Array<{ id: string }>;
 };
 
@@ -55,6 +58,8 @@ export function ObjectForm({ object, mode }: Props) {
   const [posX, setPosX]         = useState<string>(object?.map_position_x?.toString() ?? '');
   const [posY, setPosY]         = useState<string>(object?.map_position_y?.toString() ?? '');
   const [sortOrder, setSortOrder] = useState<string>(object?.sort_order?.toString() ?? '0');
+  const [allowComments, setAllowComments] = useState(object?.allow_comments ?? false);
+  const [historicalNote, setHistoricalNote] = useState<Record<string, unknown> | null>(object?.historical_note ?? null);
   const [loading, setLoading]   = useState(false);
   const [serverError, setServerError] = useState('');
   const [coverUploading, setCoverUploading] = useState(false);
@@ -111,6 +116,8 @@ export function ObjectForm({ object, mode }: Props) {
       map_position_x: posX ? parseFloat(posX) : null,
       map_position_y: posY ? parseFloat(posY) : null,
       sort_order:  parseInt(sortOrder, 10) || 0,
+      allow_comments: allowComments,
+      historical_note: historicalNote ?? null,
     };
 
     try {
@@ -289,6 +296,17 @@ export function ObjectForm({ object, mode }: Props) {
           />
         </div>
 
+        <div className="col-span-2 space-y-1.5">
+          <Label>Историческая справка</Label>
+          <p className="text-xs text-muted-foreground -mt-1">Показывается на странице объекта в виде раскрывающегося блока</p>
+          <div className="border border-border rounded-md overflow-hidden">
+            <TiptapEditor
+              value={historicalNote ?? { type: 'doc', content: [] }}
+              onChange={(json) => setHistoricalNote(json)}
+            />
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="posX">
             Позиция X на карте (%)
@@ -329,6 +347,19 @@ export function ObjectForm({ object, mode }: Props) {
             onChange={(e) => setSortOrder(e.target.value)}
             min={0}
           />
+        </div>
+
+        <div className="col-span-2 flex items-center gap-3 pt-1">
+          <input
+            id="allowComments"
+            type="checkbox"
+            checked={allowComments}
+            onChange={(e) => setAllowComments(e.target.checked)}
+            className="h-4 w-4 rounded border-border"
+          />
+          <Label htmlFor="allowComments" className="cursor-pointer font-normal">
+            Разрешить комментарии на странице объекта
+          </Label>
         </div>
       </div>
 

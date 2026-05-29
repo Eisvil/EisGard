@@ -153,3 +153,64 @@ CHECK constraint в БД оставлен (`'money','materials','labor'`), но 
 
 Файл содержит `export type Database = Record<string, unknown>` вместо сгенерированных типов.  
 **Когда исправить:** `npx supabase gen types typescript --project-id wxhvssbvguvxvslgtvod > src/types/database.ts` — после стабилизации схемы.
+
+---
+
+## Дизайн: Lora вместо Palatino Linotype как основной шрифт
+
+Подключён Google Fonts Lora через `next/font/google` (subsets `latin`, `cyrillic`; weights 400/500/600/700). `--serif` обновлён: `var(--font-lora), "Palatino Linotype", "Book Antiqua", Georgia, serif`.
+
+**Причина:** Palatino Linotype — системный шрифт Windows без корректных TrueType-хинтов; на экранах < 120 DPI (большинство Windows-мониторов) рендерится размыто. Lora — OTF с хинтами, одинаково чёткий на Windows/Android/Mac и имеет полноценный кириллический subset.
+
+## Дизайн: Fluid type scale через clamp() вместо фиксированных px
+
+Все heading- и body-размеры переведены на CSS-переменные `--text-xs`…`--text-4xl` (Major Third 1.25, base 16px), реализованные через `clamp(min, vw, max)`. Добавлены в `globals.css :root`.
+
+**Причина:** до рефакторинга размеры были захардкожены хаотично (36/27/22/20px без системы). Fluid clamp обеспечивает читаемость на 375px без отдельных медиа-запросов под каждый размер. Все 9 значений — в одном месте.
+
+## Дизайн: Semantic color tokens (--ink-soft, --ink-muted, --ink-faint)
+
+Добавлены промежуточные семантические токены: `--ink-soft: #777064`, `--ink-muted: #938878`, `--ink-faint: #b0a899`, `--surface-hover: rgba(240,234,220,.55)`.
+
+**Причина:** в CSS было 6+ вариантов одного «мягкого серо-коричневого» (#777064, #7a7266, #6e675c, #665e51, #665f54…). Токен даёт единую точку правды для второстепенного текста без поиска по всем файлам. Дополняют существующую палитру (--ink, --olive, --gold), не заменяя её.
+
+## Дизайн: Unicode-символы → lucide-react
+
+Все Unicode-символы в UI (♙⚒♟◆★♧◷◈▤) заменены на `lucide-react` SVG-иконки.
+
+**Причина:** Unicode-символы не управляются через CSS `color`/`stroke`, не масштабируются предсказуемо и рендерятся по-разному на разных ОС/шрифтах. lucide-react — единое семейство (stroke-width=1.75), размер и цвет через props.
+
+Файлы: `Footer.tsx` (Eye/BookOpen/Leaf), `MapSection.tsx` (Star/Coins/Clock/CreditCard/Package/Users/Handshake). CSS-контейнеры `.principle b` и `.support-grid b` переведены с `font-size` на `display: flex; align-items: center`.
+
+## Футер: социальные иконки в отдельном 5-м столбце grid
+
+`.social` вынесен из вложенного layout `.footer-brand` в самостоятельный 5-й элемент `.footer-inner` grid (было в `grid-column: 1/3` внутри `.footer-brand`).
+
+**Причина:** новая колонка сохраняет 4-колоночную сетку принципов неизменной и даёт социальным иконкам независимое позиционирование. Footer-brand сохраняет собственную 2-колоночную внутреннюю сетку (логотип + название) без влияния иконок.
+
+## Футер: async Server Component — динамические соцссылки из settings
+
+`Footer.tsx` стал `async function`. При рендере фетчит из таблицы `settings` ключи `social_vk`, `social_telegram`, `social_youtube`, `social_vk_icon`, `social_telegram_icon`, `social_youtube_icon`. Ошибка фетча обрабатывается silently — футер рендерится без ссылок.
+
+**Причина:** URL соцсетей и иконки управляются через admin → Настройки → Соцсети; не должны быть захардкожены в коде.
+
+## Социальные иконки: кастомный upload с fallback на SVG
+
+Если в `settings` задан `social_*_icon` (URL в Storage) → рендерим `<img width={40} height={40} objectFit="contain">`. Иначе → дефолтный inline `<svg>` с path-данными (VK, Telegram, YouTube).
+
+**Причина:** администратор может заменить любую иконку на брендированный PNG/SVG без деплоя. Fallback гарантирует, что при пустом значении иконка всё равно отображается.
+
+Файлы иконок загружаются в `covers/settings/social_{network}_{timestamp}.ext`. Ключ `social_vk_icon` / `social_telegram_icon` / `social_youtube_icon` в `settings` хранит публичный URL.
+
+## Storage: SVG добавлен в covers bucket через SQL (не миграцией)
+
+`image/svg+xml` добавлен в `allowed_mime_types` бакета `covers` через `UPDATE storage.buckets SET allowed_mime_types = array_append(...)` выполненный через Supabase MCP (`execute_sql`).
+
+**Причина:** это runtime-конфигурация Storage, не изменение схемы БД. Создание миграции `.sql` файла для изменения записи в `storage.buckets` нестандартно — миграции меняют схему, не данные системных таблиц. Изменение применено напрямую и не требует `npx supabase db push`.
+
+## Дизайн: Тёплая тема shadcn в admin.css
+
+13 HSL-переменных shadcn сдвинуты с cold neutral-gray на тёплые paper/olive:
+`--background: 38 30% 98%` (было `0 0% 100%`), `--primary: 84 22% 40%` (olive; было `222.2 47.4% 11.2%`), `--border: 35 28% 86%` (было `214.3 31.8% 91.4%`), остальные muted/accent/ring/foreground по той же логике.
+
+**Причина:** дефолтная shadcn-тема в cold gray визуально выбивалась из публичной части с тёплой paper/olive палитрой. После смены admin-интерфейс воспринимается как органичное продолжение сайта. `@theme inline` маппинг и `destructive` переменная остаются без изменений.

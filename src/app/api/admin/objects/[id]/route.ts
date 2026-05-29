@@ -16,6 +16,8 @@ const patchObjectSchema = z.object({
   map_position_y: z.number().min(0).max(100).optional().nullable(),
   sort_order:     z.number().int().optional(),
   total_goal_rub: z.number().int().min(0).optional(),
+  allow_comments: z.boolean().optional(),
+  historical_note: z.record(z.string(), z.unknown()).nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

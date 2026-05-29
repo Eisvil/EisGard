@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
+import { uuidSchema } from '@/lib/utils/zod';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -53,7 +54,7 @@ const postSchema = z.object({
   description: z.string().max(500).optional(),
   unit: z.string().min(1).max(20).default('шт'),
   needed_qty: z.number().positive(),
-  object_id: z.string().uuid().optional(),
+  object_id: uuidSchema.optional(),
   sort_order: z.number().int().default(0),
 });
 
