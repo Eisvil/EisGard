@@ -347,6 +347,18 @@
 - [x] `src/components/layouts/AdminSidebar.tsx` — все `slate-*`/`bg-white` заменены; добавлен логотип `logo.png` + «Живое Городище» шрифтом Lora (olive-dark) + подпись «Панель администратора»; активный пункт навигации — тёплый olive-фон + золотая левая граница (вертикальный аналог gold-подчёркивания публичной навигации)
 - [x] `src/app/(admin)/layout.tsx` — убран `bg-muted/30` (фон теперь единственный источник — `body` в `admin.css`)
 
+### ISR — перенос user-context на клиент (2026-05-30)
+- [x] `src/components/layouts/Footer.tsx` — переключён на `createStaticSupabaseClient()` (был скрытым блокером ISR для всех страниц)
+- [x] `src/app/(public)/page.tsx` — публичные данные через `createStaticSupabaseClient()`; PlayerHUD данные перенесены в `MapSection` `useEffect`
+- [x] `src/app/(public)/objects/[slug]/page.tsx` — `createStaticSupabaseClient()`, убраны `searchParams` и user-запросы; `currentUser` для CommentsSection → клиентский fetch
+- [x] `src/app/(public)/chronicle/page.tsx`, `materials/`, `partners/`, `about/`, `privacy/`, `personal-data/` — `createStaticSupabaseClient()`
+- [x] `src/components/features/MapSection.tsx` — `useState` + `useEffect` для PlayerHUD: первый рендер показывает «Гость городища», после гидрации обновляется профилем из Supabase
+- [x] `src/components/features/CommentsSection.tsx` — клиентский auth fetch в `useEffect`; редактор комментариев появляется после гидрации для авторизованных пользователей
+- [x] `src/components/features/DonatedToast.tsx` — `useSearchParams()` в обёртке `<Suspense>` вместо серверного пропа `show`
+- [x] `src/components/features/MaterialsClient.tsx` — `isLoggedIn` вычисляется через `useEffect` + Supabase browser client; убран проп из сервер-компонента
+
+**Build output:** `○ /` (5m revalidate), `● /objects/[slug]` (1h SSG, 9 объектов пре-сгенерированы), `○ /chronicle` (1m), `○ /materials` (30m), `○ /partners` (1h), `○ /about/privacy/personal-data` (1h)
+
 ### Оптимизация производительности (2026-05-30)
 - [x] `src/middleware.ts` — `getUser()` вызывается только для `/admin` и `/profile`; публичные маршруты используют `getSession()` (локальная JWT-проверка, без network round-trip) → −40–60 мс на каждый запрос к `/`, `/objects/*`, `/chronicle` и др.
 - [x] `next.config.ts` — `compress: true` (gzip HTML/CSS/JS), `images.remotePatterns` для `*.supabase.co`, `formats: ['image/avif', 'image/webp']`
@@ -360,7 +372,7 @@
 - [x] `CommentsSection.tsx` — `CommentEditor` загружается через `next/dynamic` с `ssr: false` → TipTap (~150 KB) не входит в начальный бандл
 - [x] `CommentsSection.tsx` — Realtime INSERT: вместо `fetchPage(1)` — однострочный запрос по `id` + prepend в state → 0 лишних сетевых запросов при новом комментарии
 
-**Примечание ISR:** страницы остаются `ƒ (Dynamic)` в build-выводе, так как используют `cookies()` через `createServerSupabaseClient()`. Директивы `revalidate` станут эффективными после переноса user-context на клиентскую сторону (технический долг). Уже работающие оптимизации: middleware (-40–60 мс/запрос), gzip, lazy images, TipTap dynamic import, Realtime prepend.
+**Примечание ISR:** на момент коммита страницы оставались `ƒ (Dynamic)` — исправлено в следующем коммите (ISR рефактор, 2026-05-30).
 
 ### Мобильная адаптация и UI-правки (2026-05-29)
 - [x] Аудит мобильной версии через Playwright (viewport 390×844, iPhone 14) — найдено 7 проблем
@@ -393,5 +405,5 @@ _(все основные US реализованы)_
 - [x] Chronicle и новости на главной — заменены на реальные данные Supabase (US-010)
 - [x] Статистика в правой панели — подключена к реальным данным Supabase (2026-05-28)
 - [ ] Email-уведомления (`donation_confirmed`, `new_title`) — после подключения Resend (US-007)
-- [ ] ISR для публичных страниц — вынести user-context (PlayerHUD, applied camps) на клиент через `useEffect`/SWR; заменить `createServerSupabaseClient()` на `createStaticSupabaseClient()` в data-fetching пути → страницы смогут кэшироваться как ISR
+- [x] ISR для публичных страниц — user-context перенесён на клиент; `createStaticSupabaseClient()` во всех публичных страницах и Footer → `/` (5m), `/objects/[slug]` SSG (1h), `/chronicle` (1m), `/materials` (30m), `/partners` (1h), `/about/privacy/personal-data` (1h)
 - [x] Тестирование webhook с реальным ЮMoney — HMAC-SHA256 верифицирован (`match: true`), донат автоматически подтверждён (2026-05-29)
