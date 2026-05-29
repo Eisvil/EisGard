@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
-import { verifyWebhookSignature, verifyCardSignature } from '@/lib/payments/ymoney';
+import { verifyNotification } from '@/lib/payments/ymoney';
 import { awardPoints } from '@/lib/points/awardPoints';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,44 +33,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const {
-    notification_type = '',
-    operation_id = '',
-    amount = '',
-    currency = '',
-    datetime = '',
-    sender = '',
-    codepro = '',
-    label = '',
-    sha1_hash = '',
-    // card-incoming payments use 'sign' instead of 'sha1_hash'
-    sign = '',
-  } = params;
-
-  const receivedHash = sha1_hash || sign;
-  const unaccepted = params['unaccepted'] ?? '';
-
-  console.log('[ymoney] type:', notification_type, '| op:', operation_id);
-  console.log('[ymoney] sha1_hash:', sha1_hash || '(empty)', '| sign:', sign || '(empty)');
-  console.log('[ymoney] receivedHash:', receivedHash || '(empty)', '| unaccepted:', unaccepted || '(empty)');
-  console.log('[ymoney] secret_len:', (process.env.YMONEY_NOTIFICATION_SECRET ?? '').length);
+  const { label = '', operation_id = '', amount = '' } = params;
 
   const secret = process.env.YMONEY_NOTIFICATION_SECRET ?? '';
-  const valid = notification_type === 'card-incoming'
-    ? verifyCardSignature(
-        { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash: receivedHash },
-        secret,
-        unaccepted,
-      )
-    : verifyWebhookSignature(
-        { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash: receivedHash },
-        secret,
-      );
-
-  console.log('[ymoney] SHA-1 valid:', valid);
+  const valid = verifyNotification(params, secret);
 
   if (!valid) {
-    console.warn('[ymoney webhook] invalid SHA-1, operation_id:', operation_id);
+    console.warn('[ymoney webhook] invalid sign, operation_id:', operation_id);
     return OK();
   }
 

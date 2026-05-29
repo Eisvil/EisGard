@@ -1,55 +1,24 @@
-import { createHash } from 'crypto';
+import { createHmac } from 'crypto';
 
-interface WebhookFields {
-  notification_type: string;
-  operation_id: string;
-  amount: string;
-  currency: string;
-  datetime: string;
-  sender: string;
-  codepro: string;
-  label: string;
-  sha1_hash: string;
-}
+// New ЮMoney signing (from 18 May 2026): HMAC-SHA256 of all params except 'sign',
+// sorted alphabetically by key, values RFC-3986 URL-encoded, joined as key=value&...
+export function verifyNotification(params: Record<string, string>, secret: string): boolean {
+  const sign = params['sign'] ?? '';
+  if (!sign) return false;
 
-export function verifyWebhookSignature(fields: WebhookFields, secret: string): boolean {
-  const str = [
-    fields.notification_type,
-    fields.operation_id,
-    fields.amount,
-    fields.currency,
-    fields.datetime,
-    fields.sender,
-    fields.codepro,
-    secret,
-    fields.label,
-  ].join('&');
+  const rest: Record<string, string> = { ...params };
+  delete rest['sign'];
 
-  const computed = createHash('sha1').update(str).digest('hex');
-  return computed === fields.sha1_hash;
-}
+  const str = Object.keys(rest)
+    .sort()
+    .map(k => `${k}=${encodeURIComponent(rest[k] ?? '')}`)
+    .join('&');
 
-// card-incoming notifications append 'unaccepted' field to the SHA-1 string
-export function verifyCardSignature(fields: WebhookFields, secret: string, unaccepted: string): boolean {
-  const str = [
-    fields.notification_type,
-    fields.operation_id,
-    fields.amount,
-    fields.currency,
-    fields.datetime,
-    fields.sender,
-    fields.codepro,
-    secret,
-    fields.label,
-    unaccepted,
-  ].join('&');
-
-  const computed = createHash('sha1').update(str).digest('hex');
-  console.log('[ymoney-card] str:', JSON.stringify(str));
-  console.log('[ymoney-card] computed:', computed);
-  console.log('[ymoney-card] received:', fields.sha1_hash);
-  console.log('[ymoney-card] match:', computed === fields.sha1_hash);
-  return computed === fields.sha1_hash;
+  const computed = createHmac('sha256', secret).update(str).digest('hex');
+  console.log('[ymoney] hmac str (first 100):', str.slice(0, 100));
+  console.log('[ymoney] computed:', computed, '| received:', sign);
+  console.log('[ymoney] match:', computed === sign);
+  return computed === sign;
 }
 
 interface QuickpayParams {
