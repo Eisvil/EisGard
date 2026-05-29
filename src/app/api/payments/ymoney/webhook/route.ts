@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
-import { verifyWebhookSignature } from '@/lib/payments/ymoney';
+import { verifyWebhookSignature, verifyCardSignature } from '@/lib/payments/ymoney';
 import { awardPoints } from '@/lib/points/awardPoints';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,12 +48,19 @@ export async function POST(request: NextRequest) {
   } = params;
 
   const receivedHash = sha1_hash || sign;
+  const unaccepted = params['unaccepted'] ?? '';
 
   const secret = process.env.YMONEY_NOTIFICATION_SECRET ?? '';
-  const valid = verifyWebhookSignature(
-    { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash: receivedHash },
-    secret
-  );
+  const valid = notification_type === 'card-incoming'
+    ? verifyCardSignature(
+        { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash: receivedHash },
+        secret,
+        unaccepted,
+      )
+    : verifyWebhookSignature(
+        { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash: receivedHash },
+        secret,
+      );
 
   if (!valid) {
     console.warn('[ymoney webhook] invalid SHA-1, operation_id:', operation_id);

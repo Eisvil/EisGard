@@ -29,6 +29,25 @@ export function verifyWebhookSignature(fields: WebhookFields, secret: string): b
   return computed === fields.sha1_hash;
 }
 
+// card-incoming notifications append 'unaccepted' field to the SHA-1 string
+export function verifyCardSignature(fields: WebhookFields, secret: string, unaccepted: string): boolean {
+  const str = [
+    fields.notification_type,
+    fields.operation_id,
+    fields.amount,
+    fields.currency,
+    fields.datetime,
+    fields.sender,
+    fields.codepro,
+    secret,
+    fields.label,
+    unaccepted,
+  ].join('&');
+
+  const computed = createHash('sha1').update(str).digest('hex');
+  return computed === fields.sha1_hash;
+}
+
 interface QuickpayParams {
   wallet: string;
   sum: number;
