@@ -25,37 +25,38 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh session — required by @supabase/ssr
-  const { data: { user } } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
 
-  // Protect /profile
-  if (pathname.startsWith('/profile')) {
-    if (!user) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/auth/login';
-      url.searchParams.set('next', pathname);
-      return NextResponse.redirect(url);
-    }
-  }
+  // For protected routes — full server-side verification
+  if (pathname.startsWith('/profile') || pathname.startsWith('/admin')) {
+    const { data: { user } } = await supabase.auth.getUser();
 
-  // Protect /admin
-  if (pathname.startsWith('/admin')) {
-    if (!user) {
+    if (pathname.startsWith('/profile') && !user) {
       const url = request.nextUrl.clone();
       url.pathname = '/auth/login';
       url.searchParams.set('next', pathname);
       return NextResponse.redirect(url);
     }
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-    if (!profile || !['admin', 'moderator'].includes(profile.role as string)) {
-      return NextResponse.redirect(new URL('/', request.url));
+
+    if (pathname.startsWith('/admin')) {
+      if (!user) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/auth/login';
+        url.searchParams.set('next', pathname);
+        return NextResponse.redirect(url);
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      if (!profile || !['admin', 'moderator'].includes(profile.role as string)) {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
     }
+  } else {
+    // For public routes — local JWT validation only (no network round-trip)
+    await supabase.auth.getSession();
   }
 
   // Fire-and-forget view counter for /objects/[slug]

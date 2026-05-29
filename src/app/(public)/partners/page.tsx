@@ -4,6 +4,8 @@ import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { PartnersClient } from '@/components/features/PartnersClient';
 
+export const revalidate = 3600;
+
 type ObjectOption = {
   id: string;
   name: string;

@@ -298,6 +298,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
                 className="selected-photo"
                 src={selected.cover_url}
                 alt={selected.name}
+                loading="lazy"
               />
             )}
             <p className="selected-description">{selDesc}</p>
@@ -338,6 +339,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
             id="map-image"
             style={{ transform: `scale(${mapScale})` }}
             onLoad={updateHotspotBounds}
+            fetchPriority="high"
           />
 
           {/* Player HUD */}
@@ -345,7 +347,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
             <div className="player-avatar" aria-hidden="true">
               {userProfile?.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={userProfile.avatar_url} alt={userProfile.name} style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                <img src={userProfile.avatar_url} alt={userProfile.name} style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} loading="lazy" />
               ) : (
                 <svg viewBox="0 0 44 44">
                   <path className="avatar-bg" d="M22 2a20 20 0 1 1 0 40 20 20 0 0 1 0-40Z" />
@@ -462,7 +464,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
             {chronicles.slice(0, 3).map((ev, i) => (
               <li key={ev.id}>
                 {ev.avatar_url ? (
-                  <img src={ev.avatar_url} alt="" className="portrait" style={{ objectFit: 'cover' }} />
+                  <img src={ev.avatar_url} alt="" className="portrait" style={{ objectFit: 'cover' }} loading="lazy" />
                 ) : (
                   <b className={`portrait p${(i % 3) + 1}`} aria-hidden="true"></b>
                 )}
@@ -531,7 +533,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
                   onClick={() => { if (!draggedRef.current) router.push(`/objects/${obj.slug}`); }}
                 >
                   {obj.cover_url
-                    ? <img src={obj.cover_url} alt={obj.name} />
+                    ? <img src={obj.cover_url} alt={obj.name} loading="lazy" />
                     : <span className="object-card-placeholder" aria-hidden="true" />
                   }
                   <span className="badge">{info.label}</span>
@@ -586,7 +588,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
         {newsItems.slice(0, 5).map((n) => (
           <article key={n.slug} style={{ cursor: 'pointer' }} onClick={() => router.push(`/news/${n.slug}`)}>
             {n.cover_url
-              ? <img src={n.cover_url} alt="" />
+              ? <img src={n.cover_url} alt="" loading="lazy" />
               : <div style={{ width: 88, height: 112, borderRadius: 5, background: '#e8dfc8', flexShrink: 0 }} />
             }
             <div>

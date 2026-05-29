@@ -4,6 +4,8 @@ import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { MaterialsClient } from '@/components/features/MaterialsClient';
 
+export const revalidate = 1800;
+
 type MaterialRow = {
   id: string;
   name: string;

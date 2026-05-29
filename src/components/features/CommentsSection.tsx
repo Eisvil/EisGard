@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
-import { CommentEditor } from './CommentEditor';
 import { CommentCard } from './CommentCard';
 import type { CommentData } from './CommentCard';
+
+const CommentEditor = dynamic(
+  () => import('./CommentEditor').then((m) => ({ default: m.CommentEditor })),
+  { ssr: false }
+);
 
 type Props = {
   objectId: string;
@@ -53,13 +58,28 @@ export function CommentsSection({ objectId, objectSlug, allowComments, currentUs
     if (!allowComments) return;
     fetchPage(1);
 
-    const supabase = createBrowserSupabaseClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = createBrowserSupabaseClient() as any;
     const channel = supabase
       .channel(`comments:${objectId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'object_comments', filter: `object_id=eq.${objectId}` },
-        () => { fetchPage(1); setPage(1); }
+        async (payload: { new: { id: string } }) => {
+          const newId = payload.new.id;
+          const { data } = await supabase
+            .from('object_comments')
+            .select('id, body, photos, created_at, updated_at, parent_id, user:profiles!user_id(id, full_name, avatar_url)')
+            .eq('id', newId)
+            .maybeSingle();
+          if (!data) return;
+          const comment = data as unknown as CommentData;
+          setComments((prev) => {
+            if (prev.some((c) => c.id === newId)) return prev; // already added by handleNewComment
+            return [comment, ...prev];
+          });
+          setTotal((prev) => prev + 1);
+        }
       )
       .subscribe();
 

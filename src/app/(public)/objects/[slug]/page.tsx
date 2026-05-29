@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { formatMoney, getProgress } from '@/lib/utils/formatMoney';
 import { OBJECT_STATUS } from '@/lib/constants/objectStatus';
 import { Header } from '@/components/layouts/Header';
@@ -45,6 +46,17 @@ type ChronicleRow = {
   amount_kopecks: number | null;
   created_at: string;
 };
+
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const supabase = createStaticSupabaseClient();
+  const { data } = await supabase
+    .from('objects')
+    .select('slug')
+    .neq('status', 'draft');
+  return (data ?? []).map((o: { slug: string }) => ({ slug: o.slug }));
+}
 
 type Params = { slug: string };
 type SearchParams = { donated?: string };
@@ -154,7 +166,7 @@ export default async function ObjectPage({
 
       {object.cover_url ? (
         <div className="object-hero">
-          <img src={object.cover_url} alt={object.name} />
+          <img src={object.cover_url} alt={object.name} fetchPriority="high" />
           <div className="object-hero-overlay">
             <h1>{object.name}</h1>
             <span

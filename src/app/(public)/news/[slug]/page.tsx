@@ -23,6 +23,8 @@ type PageProps = {
   searchParams: Promise<{ preview?: string }>;
 };
 
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
   const supabase = createStaticSupabaseClient();
   const { data } = await supabase

@@ -347,6 +347,21 @@
 - [x] `src/components/layouts/AdminSidebar.tsx` — все `slate-*`/`bg-white` заменены; добавлен логотип `logo.png` + «Живое Городище» шрифтом Lora (olive-dark) + подпись «Панель администратора»; активный пункт навигации — тёплый olive-фон + золотая левая граница (вертикальный аналог gold-подчёркивания публичной навигации)
 - [x] `src/app/(admin)/layout.tsx` — убран `bg-muted/30` (фон теперь единственный источник — `body` в `admin.css`)
 
+### Оптимизация производительности (2026-05-30)
+- [x] `src/middleware.ts` — `getUser()` вызывается только для `/admin` и `/profile`; публичные маршруты используют `getSession()` (локальная JWT-проверка, без network round-trip) → −40–60 мс на каждый запрос к `/`, `/objects/*`, `/chronicle` и др.
+- [x] `next.config.ts` — `compress: true` (gzip HTML/CSS/JS), `images.remotePatterns` для `*.supabase.co`, `formats: ['image/avif', 'image/webp']`
+- [x] `src/components/features/MapSection.tsx` — `fetchPriority="high"` на карту поселения (LCP); `loading="lazy"` на аватар пользователя, фото выбранного объекта, обложки карточек и новостей
+- [x] `src/app/(public)/objects/[slug]/page.tsx` — `fetchPriority="high"` на hero-изображение; `generateStaticParams` (pre-define slugs); `export const revalidate = 3600`
+- [x] `src/app/(public)/page.tsx` — `export const revalidate = 300` (заготовка ISR)
+- [x] `src/app/(public)/chronicle/page.tsx` — `export const revalidate = 60`
+- [x] `src/app/(public)/partners/page.tsx` — `export const revalidate = 3600`
+- [x] `src/app/(public)/materials/page.tsx` — `export const revalidate = 1800`
+- [x] `src/app/(public)/news/[slug]/page.tsx` — `export const revalidate = 3600`
+- [x] `CommentsSection.tsx` — `CommentEditor` загружается через `next/dynamic` с `ssr: false` → TipTap (~150 KB) не входит в начальный бандл
+- [x] `CommentsSection.tsx` — Realtime INSERT: вместо `fetchPage(1)` — однострочный запрос по `id` + prepend в state → 0 лишних сетевых запросов при новом комментарии
+
+**Примечание ISR:** страницы остаются `ƒ (Dynamic)` в build-выводе, так как используют `cookies()` через `createServerSupabaseClient()`. Директивы `revalidate` станут эффективными после переноса user-context на клиентскую сторону (технический долг). Уже работающие оптимизации: middleware (-40–60 мс/запрос), gzip, lazy images, TipTap dynamic import, Realtime prepend.
+
 ### Мобильная адаптация и UI-правки (2026-05-29)
 - [x] Аудит мобильной версии через Playwright (viewport 390×844, iPhone 14) — найдено 7 проблем
 - [x] `src/styles/responsive.css` — Fix 1: `.about-principles` — 2-col на 920px, 1-col на 760px (было 3-col без override → нечитаемые 107px)
@@ -378,4 +393,5 @@ _(все основные US реализованы)_
 - [x] Chronicle и новости на главной — заменены на реальные данные Supabase (US-010)
 - [x] Статистика в правой панели — подключена к реальным данным Supabase (2026-05-28)
 - [ ] Email-уведомления (`donation_confirmed`, `new_title`) — после подключения Resend (US-007)
+- [ ] ISR для публичных страниц — вынести user-context (PlayerHUD, applied camps) на клиент через `useEffect`/SWR; заменить `createServerSupabaseClient()` на `createStaticSupabaseClient()` в data-fetching пути → страницы смогут кэшироваться как ISR
 - [x] Тестирование webhook с реальным ЮMoney — HMAC-SHA256 верифицирован (`match: true`), донат автоматически подтверждён (2026-05-29)

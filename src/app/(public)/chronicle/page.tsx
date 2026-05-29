@@ -4,6 +4,8 @@ import { Footer } from '@/components/layouts/Footer';
 import { ChronicleList } from '@/components/features/ChronicleList';
 import type { ChronicleEvent } from '@/components/features/MapSection';
 
+export const revalidate = 60;
+
 export const metadata = {
   title: 'Летопись — Живое Городище',
   description: 'Хроника событий: пожертвования, волонтёрство, материальная помощь участников проекта.',

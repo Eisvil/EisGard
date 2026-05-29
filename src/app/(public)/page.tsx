@@ -4,6 +4,8 @@ import { Footer } from '@/components/layouts/Footer';
 import { MapSection } from '@/components/features/MapSection';
 import type { ChronicleEvent, NewsItem, SiteStats, UserProfile } from '@/components/features/MapSection';
 
+export const revalidate = 300;
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
 
