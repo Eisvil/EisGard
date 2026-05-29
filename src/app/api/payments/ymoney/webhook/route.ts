@@ -43,6 +43,9 @@ export async function POST(request: NextRequest) {
     secret
   );
 
+  console.log('[ymoney] params:', JSON.stringify({ notification_type, operation_id, amount, label, codepro, sha1_hash: sha1_hash.slice(0, 8) + '...' }));
+  console.log('[ymoney] SHA-1 valid:', valid);
+
   if (!valid) {
     console.warn('[ymoney webhook] invalid SHA-1, operation_id:', operation_id);
     return OK();
