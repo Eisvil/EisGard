@@ -611,6 +611,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
       {showSupportModal && (
         <SupportModal
           onClose={() => setShowSupportModal(false)}
+          defaultName={userProfile?.name}
         />
       )}
     </>
