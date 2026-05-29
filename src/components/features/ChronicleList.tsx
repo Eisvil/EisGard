@@ -26,7 +26,7 @@ const EVENT_ICONS: Record<string, string> = {
 function getEventDescription(ev: ChronicleEvent): string {
   if (ev.event_type === 'donation') {
     const amount = ev.amount_kopecks ? formatMoney(ev.amount_kopecks) : '';
-    const obj = ev.object_name ? ` на «${ev.object_name}»` : '';
+    const obj = ev.object_name ? ` на «${ev.object_name}»` : ' на развитие Городища';
     return `пожертвовал${obj}${amount ? ` ${amount}` : ''}`;
   }
   if (ev.event_type === 'volunteer') {

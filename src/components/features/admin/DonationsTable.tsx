@@ -196,7 +196,7 @@ export default function DonationsTable({
                     </div>
                   </TableCell>
                   <TableCell className="text-sm">
-                    <div>{d.objects?.name ?? '—'}</div>
+                    <div>{d.objects?.name ?? 'На развитие Городища'}</div>
                     {d.slots?.name && (
                       <div className="text-xs text-muted-foreground">{d.slots.name}</div>
                     )}
