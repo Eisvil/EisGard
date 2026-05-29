@@ -23,7 +23,15 @@ type SettingRow = { value: unknown };
 
 export async function POST(request: NextRequest) {
   const text = await request.text();
-  const params = Object.fromEntries(new URLSearchParams(text)) as Record<string, string>;
+  // URLSearchParams treats '+' as space; ЮMoney sends datetime with literal '+03:00'
+  // so we must use decodeURIComponent to preserve '+' signs for correct SHA-1 verification
+  const params: Record<string, string> = {};
+  for (const pair of text.split('&')) {
+    const eq = pair.indexOf('=');
+    if (eq > 0) {
+      params[decodeURIComponent(pair.slice(0, eq))] = decodeURIComponent(pair.slice(eq + 1));
+    }
+  }
 
   const {
     notification_type = '',
@@ -42,9 +50,6 @@ export async function POST(request: NextRequest) {
     { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash },
     secret
   );
-
-  console.log('[ymoney] params:', JSON.stringify({ notification_type, operation_id, amount, label, codepro, sha1_hash: sha1_hash.slice(0, 8) + '...' }));
-  console.log('[ymoney] SHA-1 valid:', valid);
 
   if (!valid) {
     console.warn('[ymoney webhook] invalid SHA-1, operation_id:', operation_id);
