@@ -45,6 +45,10 @@ export function verifyCardSignature(fields: WebhookFields, secret: string, unacc
   ].join('&');
 
   const computed = createHash('sha1').update(str).digest('hex');
+  console.log('[ymoney-card] str:', JSON.stringify(str));
+  console.log('[ymoney-card] computed:', computed);
+  console.log('[ymoney-card] received:', fields.sha1_hash);
+  console.log('[ymoney-card] match:', computed === fields.sha1_hash);
   return computed === fields.sha1_hash;
 }
 

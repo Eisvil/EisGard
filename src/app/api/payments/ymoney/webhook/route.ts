@@ -50,6 +50,11 @@ export async function POST(request: NextRequest) {
   const receivedHash = sha1_hash || sign;
   const unaccepted = params['unaccepted'] ?? '';
 
+  console.log('[ymoney] type:', notification_type, '| op:', operation_id);
+  console.log('[ymoney] sha1_hash:', sha1_hash || '(empty)', '| sign:', sign || '(empty)');
+  console.log('[ymoney] receivedHash:', receivedHash || '(empty)', '| unaccepted:', unaccepted || '(empty)');
+  console.log('[ymoney] secret_len:', (process.env.YMONEY_NOTIFICATION_SECRET ?? '').length);
+
   const secret = process.env.YMONEY_NOTIFICATION_SECRET ?? '';
   const valid = notification_type === 'card-incoming'
     ? verifyCardSignature(
@@ -61,6 +66,8 @@ export async function POST(request: NextRequest) {
         { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash: receivedHash },
         secret,
       );
+
+  console.log('[ymoney] SHA-1 valid:', valid);
 
   if (!valid) {
     console.warn('[ymoney webhook] invalid SHA-1, operation_id:', operation_id);
