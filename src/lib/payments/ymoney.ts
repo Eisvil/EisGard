@@ -15,9 +15,6 @@ export function verifyNotification(params: Record<string, string>, secret: strin
     .join('&');
 
   const computed = createHmac('sha256', secret).update(str).digest('hex');
-  console.log('[ymoney] hmac str (first 100):', str.slice(0, 100));
-  console.log('[ymoney] computed:', computed, '| received:', sign);
-  console.log('[ymoney] match:', computed === sign);
   return computed === sign;
 }
 
