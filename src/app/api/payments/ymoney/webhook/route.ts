@@ -45,7 +45,12 @@ export async function POST(request: NextRequest) {
     sha1_hash = '',
   } = params;
 
+  console.log('[ymoney] raw params keys:', Object.keys(params));
+  console.log('[ymoney] sha1_hash received:', params['sha1_hash'] ?? '(missing)');
+  console.log('[ymoney] operation_id:', params['operation_id'] ?? '(missing)');
+
   const secret = process.env.YMONEY_NOTIFICATION_SECRET ?? '';
+  console.log('[ymoney] secret length:', secret.length);
   const valid = verifyWebhookSignature(
     { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash },
     secret

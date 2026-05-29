@@ -26,6 +26,8 @@ export function verifyWebhookSignature(fields: WebhookFields, secret: string): b
   ].join('&');
 
   const computed = createHash('sha1').update(str).digest('hex');
+  console.log('[ymoney-sig] str:', JSON.stringify(str));
+  console.log('[ymoney-sig] computed:', computed, '| received:', fields.sha1_hash);
   return computed === fields.sha1_hash;
 }
 
