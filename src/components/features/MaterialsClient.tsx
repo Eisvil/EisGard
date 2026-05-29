@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { MaterialModal } from './MaterialModal';
 import type { MaterialItem } from './MaterialModal';
 
@@ -13,13 +14,19 @@ type MaterialWithObject = MaterialItem & {
 
 type Props = {
   materials: MaterialWithObject[];
-  isLoggedIn: boolean;
 };
 
-export function MaterialsClient({ materials, isLoggedIn }: Props) {
+export function MaterialsClient({ materials }: Props) {
   const [activeMaterial, setActiveMaterial] = useState<MaterialWithObject | null>(null);
   const [donatedIds, setDonatedIds] = useState<Set<string>>(new Set());
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    createBrowserSupabaseClient().auth.getUser().then(({ data }) => {
+      setIsLoggedIn(!!data.user);
+    });
+  }, []);
 
   function handleDonate(material: MaterialWithObject) {
     if (!isLoggedIn) {

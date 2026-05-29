@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Eye, BookOpen, Leaf } from 'lucide-react';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createStaticSupabaseClient } from '@/lib/supabase/static';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -15,7 +15,7 @@ export async function Footer() {
   let socialYoutubeIcon = '';
 
   try {
-    const supabase = (await createServerSupabaseClient()) as AnyClient;
+    const supabase = createStaticSupabaseClient() as AnyClient;
     const { data } = await supabase
       .from('settings')
       .select('key, value')

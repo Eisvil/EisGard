@@ -1,4 +1,4 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { ChronicleList } from '@/components/features/ChronicleList';
@@ -12,7 +12,8 @@ export const metadata = {
 };
 
 export default async function ChroniclePage() {
-  const supabase = await createServerSupabaseClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createStaticSupabaseClient() as any;
 
   const { data: raw, count } = await supabase
     .from('chronicle_events')
@@ -23,7 +24,8 @@ export default async function ChroniclePage() {
     .order('created_at', { ascending: false })
     .limit(20);
 
-  const initialData: ChronicleEvent[] = (raw ?? []).map((e) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const initialData: ChronicleEvent[] = (raw ?? []).map((e: any) => {
     const obj = e.objects as { name: string; slug: string } | null;
     const profile = e.profiles as { avatar_url: string | null } | null;
     return {

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { MaterialsClient } from '@/components/features/MaterialsClient';
@@ -20,19 +20,14 @@ type MaterialRow = {
 };
 
 export default async function MaterialsPage() {
-  const supabase = await createServerSupabaseClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createStaticSupabaseClient() as any;
 
-  const [
-    { data: { user } },
-    { data: rawMaterials },
-  ] = await Promise.all([
-    supabase.auth.getUser(),
-    supabase
-      .from('materials')
-      .select('id, name, description, unit, needed_qty, received_qty, is_active, sort_order, object_id, objects(name, slug)')
-      .eq('is_active', true)
-      .order('sort_order'),
-  ]);
+  const { data: rawMaterials } = await supabase
+    .from('materials')
+    .select('id, name, description, unit, needed_qty, received_qty, is_active, sort_order, object_id, objects(name, slug)')
+    .eq('is_active', true)
+    .order('sort_order');
 
   const materials = ((rawMaterials ?? []) as MaterialRow[]).map((m) => {
     const percent =
@@ -80,7 +75,7 @@ export default async function MaterialsPage() {
               Список материалов пока пуст. Следите за обновлениями.
             </p>
           ) : (
-            <MaterialsClient materials={materials} isLoggedIn={!!user} />
+            <MaterialsClient materials={materials} />
           )}
         </div>
       </main>

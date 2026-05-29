@@ -18,13 +18,32 @@ type Props = {
   currentUser: { id: string; name?: string; role?: string } | null;
 };
 
-export function CommentsSection({ objectId, objectSlug, allowComments, currentUser }: Props) {
+export function CommentsSection({ objectId, objectSlug, allowComments, currentUser: propCurrentUser }: Props) {
+  const [currentUser, setCurrentUser] = useState(propCurrentUser);
   const [comments, setComments] = useState<CommentData[]>([]);
   const [replies, setReplies] = useState<Record<string, CommentData[]>>({});
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [banMessage, setBanMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!allowComments) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = createBrowserSupabaseClient() as any;
+    sb.auth.getUser().then(async ({ data: { user } }: { data: { user: { id: string } | null } }) => {
+      if (!user) { setCurrentUser(null); return; }
+      const { data: prof } = await sb
+        .from('profiles')
+        .select('full_name, role')
+        .eq('id', user.id)
+        .maybeSingle();
+      setCurrentUser(prof
+        ? { id: user.id, name: prof.full_name ?? undefined, role: prof.role ?? undefined }
+        : { id: user.id }
+      );
+    });
+  }, [allowComments]);
 
   async function fetchPage(p: number, append = false) {
     setLoading(true);

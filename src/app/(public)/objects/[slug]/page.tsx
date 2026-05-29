@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { formatMoney, getProgress } from '@/lib/utils/formatMoney';
 import { OBJECT_STATUS } from '@/lib/constants/objectStatus';
@@ -59,7 +58,6 @@ export async function generateStaticParams() {
 }
 
 type Params = { slug: string };
-type SearchParams = { donated?: string };
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
@@ -71,41 +69,18 @@ function getDescription(raw: unknown): string {
   return '';
 }
 
-export default async function ObjectPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<Params>;
-  searchParams: Promise<SearchParams>;
-}) {
+export default async function ObjectPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const { donated } = await searchParams;
 
-  const supabase = await createServerSupabaseClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createStaticSupabaseClient() as any;
 
-  let profileName: string | undefined;
-  let profileRole: string | undefined;
-  if (user) {
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('full_name, role')
-      .eq('id', user.id)
-      .maybeSingle() as { data: { full_name: string; role: string } | null };
-    profileName = prof?.full_name ?? undefined;
-    profileRole = prof?.role ?? undefined;
-  }
-
-  const isAdmin = profileRole === 'admin' || profileRole === 'moderator';
-
-  let objectQuery = supabase
+  const { data: rawObject } = await supabase
     .from('objects')
     .select('id, slug, name, zone, status, description, historical_note, cover_url, total_goal_rub, total_raised_rub, allow_comments')
-    .eq('slug', slug);
-
-  if (!isAdmin) objectQuery = objectQuery.neq('status', 'draft');
-
-  const { data: rawObject } = await objectQuery.maybeSingle();
+    .eq('slug', slug)
+    .neq('status', 'draft')
+    .maybeSingle();
 
   const object = rawObject as ObjectRow | null;
   if (!object) notFound();
@@ -142,27 +117,17 @@ export default async function ObjectPage({
     historical_note: s.historical_note,
   }));
 
-  const currentUser = user
-    ? { id: user.id, name: profileName, role: profileRole }
-    : null;
-
   return (
     <>
       <Header />
       <main>
       <div className="object-page-layout">
       <ObjectViewTracker objectId={object.id} />
-      <DonatedToast show={donated === 'true'} />
+      <DonatedToast />
 
       <nav style={{ marginBottom: '16px', fontSize: '14px', fontFamily: 'var(--sans)', color: 'var(--olive-soft)' }}>
         <Link href="/" className="text-link" style={{ fontSize: '14px' }}>← На главную</Link>
       </nav>
-
-      {isAdmin && object.status === 'draft' && (
-        <div style={{ marginBottom: '16px', padding: '10px 16px', background: '#fff8e1', border: '1px solid #f0c040', borderRadius: '8px', fontFamily: 'var(--sans)', fontSize: '13px', color: '#7a6010' }}>
-          Черновик — страница видна только администраторам. <Link href={`/admin/objects/${object.id}`} className="text-link" style={{ fontSize: '13px' }}>Редактировать в админке →</Link>
-        </div>
-      )}
 
       {object.cover_url ? (
         <div className="object-hero">
@@ -206,7 +171,6 @@ export default async function ObjectPage({
           objectId={object.id}
           objectSlug={object.slug}
           objectName={object.name}
-          defaultName={profileName}
         />
       </div>
 
@@ -245,7 +209,7 @@ export default async function ObjectPage({
         objectId={object.id}
         objectSlug={object.slug}
         allowComments={object.allow_comments}
-        currentUser={currentUser}
+        currentUser={null}
       />
       </div>
       </main>

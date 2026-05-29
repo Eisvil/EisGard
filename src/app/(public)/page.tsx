@@ -1,8 +1,8 @@
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { MapSection } from '@/components/features/MapSection';
-import type { ChronicleEvent, NewsItem, SiteStats, UserProfile } from '@/components/features/MapSection';
+import type { ChronicleEvent, NewsItem, SiteStats } from '@/components/features/MapSection';
 
 export const revalidate = 300;
 
@@ -10,9 +10,7 @@ export const revalidate = 300;
 type AnyClient = any;
 
 export default async function HomePage() {
-  const supabase = (await createServerSupabaseClient()) as AnyClient;
-
-  const { data: { user } } = await supabase.auth.getUser();
+  const supabase = createStaticSupabaseClient() as AnyClient;
 
   const [
     { data: objects },
@@ -51,43 +49,6 @@ export default async function HomePage() {
     objects_done:   objectsDone ?? 0,
   };
 
-  let userProfile: UserProfile | undefined;
-  if (user) {
-    const [
-      { data: profile },
-      { data: userDonations },
-      { data: userVolunteer },
-    ] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('full_name, points, avatar_url, title:title_id(name)')
-        .eq('id', user.id)
-        .maybeSingle(),
-      supabase
-        .from('donations')
-        .select('amount_kopecks')
-        .eq('user_id', user.id)
-        .eq('status', 'confirmed'),
-      supabase
-        .from('volunteer_applications')
-        .select('days_worked')
-        .eq('user_id', user.id)
-        .eq('status', 'completed'),
-    ]);
-
-    if (profile) {
-      const titleData = profile.title as { name: string } | null;
-      userProfile = {
-        name:           profile.full_name ?? 'Участник',
-        title:          titleData?.name ?? undefined,
-        points:         profile.points ?? 0,
-        donated_kopecks:(userDonations ?? []).reduce((s: number, d: { amount_kopecks: number }) => s + (d.amount_kopecks ?? 0), 0),
-        volunteer_days: (userVolunteer ?? []).reduce((s: number, v: { days_worked: number }) => s + (v.days_worked ?? 0), 0),
-        avatar_url:     profile.avatar_url ?? null,
-      };
-    }
-  }
-
   const chronicle: ChronicleEvent[] = (chronicleRaw ?? []).map((e: Record<string, unknown>) => {
     const obj = e.objects as { name: string; slug: string } | null;
     const profile = e.profiles as { avatar_url: string | null } | null;
@@ -118,7 +79,6 @@ export default async function HomePage() {
           initialChronicle={chronicle}
           newsItems={news}
           siteStats={siteStats}
-          userProfile={userProfile}
         />
       </main>
       <Footer />

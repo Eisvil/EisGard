@@ -106,7 +106,7 @@ type MapSectionProps = {
   userProfile?: UserProfile;
 };
 
-export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile }: MapSectionProps) {
+export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile: initialProfile }: MapSectionProps) {
   const router = useRouter();
   const defaultObj = objects.find(o => o.slug === 'kuznitsa') ?? objects[0];
   const [selectedId, setSelectedId] = useState(defaultObj?.id ?? '');
@@ -115,6 +115,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
   const [toastMsg, setToastMsg] = useState('');
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [chronicles, setChronicles] = useState<ChronicleEvent[]>(initialChronicle);
+  const [userProfile, setUserProfile] = useState<UserProfile | undefined>(initialProfile);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapCanvasRef = useRef<HTMLDivElement>(null);
   const mapImageRef = useRef<HTMLImageElement>(null);
@@ -191,6 +192,30 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
       supabase.removeChannel(channel);
     };
   }, [prependChronicle]);
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const sb = createBrowserSupabaseClient() as any;
+    sb.auth.getUser().then(async ({ data: { user } }: { data: { user: { id: string } | null } }) => {
+      if (!user) { setUserProfile(undefined); return; }
+      const [{ data: p }, { data: donations }, { data: volunteer }] = await Promise.all([
+        sb.from('profiles').select('full_name, points, avatar_url, title:title_id(name)').eq('id', user.id).maybeSingle(),
+        sb.from('donations').select('amount_kopecks').eq('user_id', user.id).eq('status', 'confirmed'),
+        sb.from('volunteer_applications').select('days_worked').eq('user_id', user.id).eq('status', 'completed'),
+      ]);
+      if (p) {
+        const titleData = p.title as { name: string } | null;
+        setUserProfile({
+          name: p.full_name ?? 'Участник',
+          title: titleData?.name ?? undefined,
+          points: p.points ?? 0,
+          donated_kopecks: (donations ?? []).reduce((s: number, d: { amount_kopecks: number }) => s + (d.amount_kopecks ?? 0), 0),
+          volunteer_days: (volunteer ?? []).reduce((s: number, v: { days_worked: number }) => s + (v.days_worked ?? 0), 0),
+          avatar_url: p.avatar_url ?? null,
+        });
+      }
+    });
+  }, []);
 
   const selected = objects.find(o => o.id === selectedId) ?? objects[0];
 

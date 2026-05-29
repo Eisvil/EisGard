@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { PartnersClient } from '@/components/features/PartnersClient';
@@ -28,7 +28,8 @@ const SUPPORT_LABEL: Record<string, string> = {
 };
 
 export default async function PartnersPage() {
-  const supabase = await createServerSupabaseClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createStaticSupabaseClient() as any;
 
   const [{ data: rawObjects }, { data: rawPartners }] = await Promise.all([
     supabase

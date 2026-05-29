@@ -1,23 +1,31 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-type Props = { show: boolean };
-
-export function DonatedToast({ show }: Props) {
+function DonatedToastInner() {
+  const searchParams = useSearchParams();
   const [visible, setVisible] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (!show) return;
+    if (searchParams.get('donated') !== 'true') return;
     setVisible(true);
     timer.current = setTimeout(() => setVisible(false), 3000);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [show]);
+  }, [searchParams]);
 
   return (
     <div className={`toast${visible ? ' visible' : ''}`} role="status" aria-live="polite">
       Спасибо за ваш вклад в городище!
     </div>
+  );
+}
+
+export function DonatedToast() {
+  return (
+    <Suspense fallback={null}>
+      <DonatedToastInner />
+    </Suspense>
   );
 }

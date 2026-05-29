@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { TiptapRenderer } from '@/components/features/TiptapRenderer';
 import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 type AnyClient = any;
 
 async function getPage() {
-  const supabase = (await createServerSupabaseClient()) as AnyClient;
+  const supabase = createStaticSupabaseClient() as AnyClient;
   const { data } = await supabase
     .from('static_pages')
     .select('title, body')
