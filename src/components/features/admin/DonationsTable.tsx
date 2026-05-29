@@ -10,7 +10,11 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Plus, PenLine, RefreshCw } from 'lucide-react';
+import { Plus, PenLine, RefreshCw, Trash2, Check } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import ManualDonationDialog from './ManualDonationDialog';
 import { formatMoney } from '@/lib/utils/formatMoney';
 
@@ -78,6 +82,8 @@ export default function DonationsTable({
   const [objectFilter, setObjectFilter] = useState('');
   const [loading, setLoading] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   const fetchDonations = useCallback(async (
     p: number,
@@ -111,6 +117,31 @@ export default function DonationsTable({
   }
 
   const totalPages = Math.ceil(meta.total / meta.per_page);
+
+  async function handleConfirm(id: string) {
+    setActionLoading(id);
+    try {
+      await fetch(`/api/admin/donations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'confirm' }),
+      });
+      fetchDonations(page, statusFilter, sourceFilter, objectFilter);
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setActionLoading(id);
+    try {
+      await fetch(`/api/admin/donations/${id}`, { method: 'DELETE' });
+      fetchDonations(page, statusFilter, sourceFilter, objectFilter);
+    } finally {
+      setActionLoading(null);
+      setDeleteTarget(null);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -177,6 +208,7 @@ export default function DonationsTable({
                 <TableHead className="text-right">Сумма</TableHead>
                 <TableHead className="text-center">Баллы</TableHead>
                 <TableHead className="text-center">Статус</TableHead>
+                <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -214,6 +246,32 @@ export default function DonationsTable({
                     <Badge variant={STATUS_VARIANT[d.status] ?? 'outline'}>
                       {STATUS_LABELS[d.status] ?? d.status}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-end gap-1">
+                      {d.status !== 'confirmed' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-green-700 hover:text-green-800 hover:bg-green-50"
+                          disabled={actionLoading === d.id}
+                          onClick={() => handleConfirm(d.id)}
+                          title="Подтвердить"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        disabled={actionLoading === d.id}
+                        onClick={() => setDeleteTarget(d.id)}
+                        title="Удалить"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -253,6 +311,26 @@ export default function DonationsTable({
         objects={objects}
         onCreated={() => fetchDonations(1, statusFilter, sourceFilter, objectFilter)}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить пожертвование?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Действие необратимо. Если донат был подтверждён, начисленные баллы будут отозваны автоматически.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && handleDelete(deleteTarget)}
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
