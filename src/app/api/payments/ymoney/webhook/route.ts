@@ -43,16 +43,15 @@ export async function POST(request: NextRequest) {
     codepro = '',
     label = '',
     sha1_hash = '',
+    // card-incoming payments use 'sign' instead of 'sha1_hash'
+    sign = '',
   } = params;
 
-  console.log('[ymoney] raw params keys:', Object.keys(params));
-  console.log('[ymoney] sha1_hash received:', params['sha1_hash'] ?? '(missing)');
-  console.log('[ymoney] operation_id:', params['operation_id'] ?? '(missing)');
+  const receivedHash = sha1_hash || sign;
 
   const secret = process.env.YMONEY_NOTIFICATION_SECRET ?? '';
-  console.log('[ymoney] secret length:', secret.length);
   const valid = verifyWebhookSignature(
-    { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash },
+    { notification_type, operation_id, amount, currency, datetime, sender, codepro, label, sha1_hash: receivedHash },
     secret
   );
 
