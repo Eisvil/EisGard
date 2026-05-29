@@ -28,7 +28,7 @@ export function PartnersClient({ objects }: Props) {
           type="button"
           className="primary-button"
           onClick={() => setModalOpen(true)}
-          style={{ padding: '14px 32px', fontSize: '17px' }}
+          style={{ padding: '14px 32px', fontSize: '17px', display: 'block', width: 'fit-content', margin: '0 auto' }}
         >
           Подать заявку на партнёрство
         </button>

@@ -137,6 +137,11 @@
   .support-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  /* Fix 1: about principles 2-col on tablet */
+  .about-principles {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 760px) {
@@ -190,6 +195,9 @@
     gap: 25px;
     overflow-x: auto;
     scrollbar-width: none;
+    /* Fix 2: fade right edge to hint at scrollability */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent 100%);
+    mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent 100%);
   }
 
   .navigation::-webkit-scrollbar {
@@ -237,7 +245,8 @@
     font-size: 13px;
   }
 
-  .player-resources span + span {
+  /* Fix 5: show points + rubles, hide days */
+  .player-resources span:nth-child(n+3) {
     display: none;
   }
 
@@ -278,14 +287,17 @@
   }
 
   .legend {
-    gap: 14px;
-    padding: 9px 13px;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 9px 16px;
     font-size: 11px;
+    bottom: 14px;
   }
 
+  /* Fix 4: show all 4 legend statuses */
   .legend li:nth-child(3),
   .legend li:nth-child(4) {
-    display: none;
+    display: flex;
   }
 
   .feature h1 {
@@ -415,6 +427,43 @@
   .footer-brand strong {
     font-size: 28px;
   }
+
+  /* Fix 1: about principles 1-col on mobile */
+  .about-principles {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 32px;
+  }
+
+  /* Fix 3: camp card stack — button under text */
+  .camp-card-body {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .camp-action {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .camp-action .primary-button,
+  .camp-action a.primary-button {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Fix 6: modal action buttons stack on narrow screens */
+@media (max-width: 480px) {
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+
+  .modal-cancel {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 @media (max-width: 430px) {
@@ -428,5 +477,10 @@
 
   .object-card img {
     height: min(58vw, 235px);
+  }
+
+  /* Fix 7: auth card padding — reduce horizontal padding on tiny screens */
+  .auth-card {
+    padding: 32px 24px 28px;
   }
 }

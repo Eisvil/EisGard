@@ -14,10 +14,12 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [consent, setConsent] = useState(false);
   const [errors, setErrors] = useState<{
     fullName?: string;
     email?: string;
     password?: string;
+    consent?: string;
     general?: string;
   }>({});
   const [loading, setLoading] = useState(false);
@@ -38,6 +40,9 @@ export default function RegisterPage() {
       e.password = 'Введите пароль';
     } else if (!PASSWORD_RE.test(password)) {
       e.password = 'Минимум 8 символов и хотя бы одна цифра';
+    }
+    if (!consent) {
+      e.consent = 'Необходимо согласие на обработку персональных данных';
     }
     return e;
   }
@@ -132,6 +137,25 @@ export default function RegisterPage() {
             />
             {errors.password && <p className="modal-error">{errors.password}</p>}
             <p className="auth-hint">Минимум 8 символов и одна цифра</p>
+          </div>
+
+          <div>
+            <div className="auth-consent">
+              <input
+                id="consent"
+                type="checkbox"
+                checked={consent}
+                onChange={e => { setConsent(e.target.checked); setErrors(p => ({ ...p, consent: undefined })); }}
+                disabled={loading}
+              />
+              <label htmlFor="consent" className="auth-consent-label">
+                Я согласен(а) на{' '}
+                <Link href="/personal-data" target="_blank" rel="noopener noreferrer">
+                  обработку персональных данных
+                </Link>
+              </label>
+            </div>
+            {errors.consent && <p className="auth-consent-error">{errors.consent}</p>}
           </div>
 
           <button

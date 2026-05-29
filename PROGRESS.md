@@ -347,6 +347,19 @@
 - [x] `src/components/layouts/AdminSidebar.tsx` — все `slate-*`/`bg-white` заменены; добавлен логотип `logo.png` + «Живое Городище» шрифтом Lora (olive-dark) + подпись «Панель администратора»; активный пункт навигации — тёплый olive-фон + золотая левая граница (вертикальный аналог gold-подчёркивания публичной навигации)
 - [x] `src/app/(admin)/layout.tsx` — убран `bg-muted/30` (фон теперь единственный источник — `body` в `admin.css`)
 
+### Мобильная адаптация и UI-правки (2026-05-29)
+- [x] Аудит мобильной версии через Playwright (viewport 390×844, iPhone 14) — найдено 7 проблем
+- [x] `src/styles/responsive.css` — Fix 1: `.about-principles` — 2-col на 920px, 1-col на 760px (было 3-col без override → нечитаемые 107px)
+- [x] `src/styles/responsive.css` — Fix 2: `mask-image` fade правого края `.navigation` (fade подсказывает о горизонтальной прокрутке)
+- [x] `src/styles/responsive.css` — Fix 3: `.camp-card-body { flex-direction: column }`, кнопка заезда на всю ширину
+- [x] `src/styles/responsive.css` — Fix 4: легенда карты — `flex-wrap: wrap`, все 4 статуса видны (было `display: none` на 3-м и 4-м)
+- [x] `src/styles/responsive.css` — Fix 5: Player HUD показывает баллы + рубли (было только баллы: `span + span { display: none }` → `span:nth-child(n+3) { display: none }`)
+- [x] `src/styles/responsive.css` — Fix 6: новый `@media (max-width: 480px)` — `.modal-actions { flex-direction: column-reverse }` (кнопки модала в стак)
+- [x] `src/styles/responsive.css` — Fix 7: `.auth-card` padding 40px 40px → 32px 24px на экранах ≤430px
+- [x] `src/styles/components.css` — `.object-card { display: flex; flex-direction: column }` — убран 10px просвет над картинкой (Chromium block-flow bug в `<button>`)
+- [x] `src/components/features/PartnersClient.tsx` — кнопка «Подать заявку» отцентрована (`display: block; width: fit-content; margin: 0 auto`)
+- [x] `src/app/(auth)/auth/register/page.tsx` + `src/styles/components.css` — обязательный чекбокс согласия на обработку персональных данных; ссылка ведёт на `/personal-data` (открывается в новой вкладке); валидация блокирует отправку без галочки
+
 ## В работе
 _(пусто)_
 
