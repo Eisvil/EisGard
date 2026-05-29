@@ -152,30 +152,29 @@
   transform: translate(-50%, -50%) scale(1.04);
 }
 
-.hotspot.selected .hotspot-round,
+.hotspot.selected .hotspot-round {
+  box-shadow: 0 0 0 2.5px rgba(102, 118, 67, .55), 0 5px 13px rgba(83, 99, 51, .22);
+}
+
 .hotspot.selected .hotspot-label {
   border-color: rgba(102, 118, 67, .4);
   box-shadow: 0 5px 13px rgba(83, 99, 51, .18);
 }
 
 .hotspot-round {
-  display: inline-grid;
-  place-items: center;
+  display: block;
   width: 54px;
   height: 54px;
-  border: 1px solid #eadbbe;
   border-radius: 50%;
-  background: rgba(255, 253, 248, .98);
+  overflow: hidden;
   box-shadow: 0 5px 12px rgba(68, 53, 27, .17);
 }
 
 .hotspot-icon {
   display: block;
-  flex: none;
-  width: 25px;
-  height: 25px;
-  fill: currentColor;
-  color: var(--olive);
+  width: 54px;
+  height: 54px;
+  object-fit: cover;
 }
 
 .hotspot-label {

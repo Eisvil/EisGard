@@ -190,9 +190,7 @@ export function MapConstructor() {
               onMouseDown={(e) => handleMouseDown(e, obj.id)}
             >
               <div className="flex flex-col items-center gap-0.5">
-                <div className="w-10 h-10 rounded-full bg-white border-2 border-amber-300 shadow flex items-center justify-center">
-                  <ObjectIcon slug={obj.icon_key ?? 'huts'} className="w-5 h-5" />
-                </div>
+                <ObjectIcon slug={obj.icon_key ?? 'huts'} size={40} className="rounded-full shadow" />
                 <span className="text-xs font-medium text-white bg-black/50 rounded px-1 whitespace-nowrap max-w-24 truncate">
                   {obj.name}
                 </span>
@@ -214,7 +212,7 @@ export function MapConstructor() {
                 title="Добавить на карту"
                 className="flex items-center gap-1.5 rounded-full border bg-muted/50 hover:bg-muted px-3 py-1 text-sm transition-colors"
               >
-                <ObjectIcon slug={obj.icon_key ?? 'huts'} className="w-4 h-4" />
+                <ObjectIcon slug={obj.icon_key ?? 'huts'} size={20} className="rounded-full" />
                 {obj.name}
                 <MapPin size={12} className="text-muted-foreground" />
               </button>

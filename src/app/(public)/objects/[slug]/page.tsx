@@ -102,7 +102,6 @@ export default async function ObjectPage({
     .from('slots')
     .select('id, name, goal_value, current_value, unit, slot_type, image_url, description, historical_note')
     .eq('object_id', object.id)
-    .eq('slot_type', 'money')
     .eq('is_closed', false)
     .order('sort_order');
 
@@ -119,12 +118,13 @@ export default async function ObjectPage({
 
   const statusInfo = OBJECT_STATUS[object.status as keyof typeof OBJECT_STATUS] ?? OBJECT_STATUS.planned;
   const pct = getProgress(object.total_raised_rub, object.total_goal_rub);
-  const moneySlots: SlotForDonate[] = slots.map((s) => ({
+  const allSlots: SlotForDonate[] = slots.map((s) => ({
     id: s.id,
     name: s.name,
     goal_value: s.goal_value,
     current_value: s.current_value,
     unit: s.unit,
+    slot_type: s.slot_type,
     image_url: s.image_url,
     description: s.description,
     historical_note: s.historical_note,
@@ -190,7 +190,7 @@ export default async function ObjectPage({
       <div style={{ marginTop: '28px' }}>
         <div className="eyebrow" style={{ marginBottom: '20px' }}>Поддержать объект</div>
         <SlotsSection
-          slots={moneySlots}
+          slots={allSlots}
           objectId={object.id}
           objectSlug={object.slug}
           objectName={object.name}

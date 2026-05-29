@@ -1,58 +1,72 @@
+// Ключ → путь к PNG-медальону в /public/icons/objects/
 export const OBJECT_ICONS: Record<string, string> = {
-  forge:      '<path d="M4 7.2 9.1 2l2.1 2.1-1.5 1.5 4.1 4.1 2.8-2.8-.9-.9L20 1.8 24.2 6l-4.1 4.3-.9-.9-2.8 2.8 7.1 7.1-4.1 4.1-7.1-7.1-6.4 6.4-3-3 6.4-6.4-4.1-4.1L4 10.4V7.2Z"/>',
-  gardens:    '<path d="M21.9 2.6c.8 7.7-2.2 13.4-9 15.6L10 22.9l-2.8-1.7 3.2-4.3c-2.7-6.6.9-11.8 11.5-14.3ZM10.7 16.4c2.9-2.1 5.3-4.8 7.3-8.1-3.6 2.7-6.1 5.4-7.3 8.1Z"/>',
-  huts:       '<path d="M2.5 11.2 13 2.5l10.5 8.7v11.3h-7.1v-6h-6.8v6H2.5V11.2Zm5.1-.7h10.8L13 6.1l-5.4 4.4Z"/>',
-  coop:       '<path d="M6.2 11.3c0-3.8 3.1-6.8 7-6.8 2.6 0 4.8 1.3 6.1 3.4l3.9-.8-2 3.1c.2.7.3 1.4.3 2.1 0 3.9-3.2 6.8-7.2 6.8h-1l-1.2 3.5H9.8l.6-3.9a7.3 7.3 0 0 1-4.2-6.4Zm4-8.2 2.1 2.2L8.5 7 10.2 3.1ZM8 21.8l-3.5 1.1 2-3.5L8 21.8Z"/>',
-  training:   '<path d="m4.3 3.5 7 6.9-2.1 2.1-3-2.9-2 2-1.6-7.9 1.7-.2Zm15.4 0-7 6.9 2.1 2.1 3-2.9 2 2 1.6-7.9-1.7-.2ZM2.6 20.6l5.8-5.8 2.2 2.2-5.8 5.8H2.6v-2.2Zm18.8 0-5.8-5.8-2.2 2.2 5.8 5.8h2.2v-2.2Z"/>',
-  tavern:     '<path d="M4.5 5h12.8v14.1c0 2.1-1.7 3.9-3.9 3.9H8.4c-2.2 0-3.9-1.8-3.9-3.9V5Zm12.8 3h2.6c2 0 3.6 1.7 3.6 3.8v2.4c0 2.2-1.6 3.8-3.6 3.8h-2.6v-3h2.2c.7 0 1.1-.5 1.1-1.2v-1.7c0-.7-.4-1.2-1.1-1.2h-2.2V8Z"/>',
-  shed:       '<path d="M2 12.5 13 3l11 9.5v2H2v-2Zm3.7 3.3h2.8v7.1H5.7v-7.1Zm11.8 0h2.8v7.1h-2.8v-7.1ZM10.2 16h5.6v2.6h-5.6V16Z"/>',
-  pottery:    '<path d="M7 3h12v3.2c0 1.6-1.3 2.9-2.4 4.1 2.7 2.1 4 4.5 4 7 0 3.5-3.4 5.7-7.6 5.7s-7.6-2.2-7.6-5.7c0-2.5 1.3-4.9 4-7C8.3 9.1 7 7.8 7 6.2V3Zm.3 14.3h11.4c-.5-2.6-2.5-4.1-5.7-4.1s-5.2 1.5-5.7 4.1Z"/>',
-  guardhouse: '<path d="M13 2 22.5 6v6.7c0 5.2-3.4 8.6-9.5 11.3-6.1-2.7-9.5-6.1-9.5-11.3V6L13 2Zm0 5.2v11.6c3.3-1.8 5-3.9 5-6.4V8.9l-5-1.7Z"/>',
+  // Основные объекты
+  forge:        '/icons/objects/forge.png',
+  gardens:      '/icons/objects/gardens.png',
+  huts:         '/icons/objects/huts.png',
+  coop:         '/icons/objects/coop.png',
+  training:     '/icons/objects/training.png',
+  tavern:       '/icons/objects/tavern.png',
+  shed:         '/icons/objects/shed.png',
+  pottery:      '/icons/objects/pottery.png',
+  guardhouse:   '/icons/objects/guardhouse.png',
 
-  // Ремесло
-  loom:        '<path d="M4 2h2v22H4V2zm16 0h2v22h-2V2zM5 3h16v2H5V3zm0 18h16v2H5v-2zM9 5v16h2V5H9zm3 0v16h2V5h-2zm3 0v16h2V5h-2z"/>',
-  tannery:     '<path d="M13 3c-5.5 0-10 4-10 9 0 2.8 1.2 5.3 3 7h14c1.8-1.7 3-4.2 3-7 0-5-4.5-9-10-9zm0 3c3.9 0 7 2.7 7 6 0 1.8-.7 3.4-2 4.8H8c-1.3-1.4-2-3-2-4.8 0-3.3 3.1-6 7-6z"/>',
-  kiln:        '<path d="M7 2h12l3 9H4L7 2zm.5 2-2 7h15l-2-7h-11zm-3.5 9h18v3H4v-3zm2 4h14l-2 9H8L6 17zm3 2 1.5 5h5l1.5-5H9z"/>',
-  carpenter:   '<path d="M19 2 24 7l-5 5-2-2-7 9-4-4 9-7-2-2 5-5zm0 3-2 2 3 3 2-2-3-3zM4 22l-2-2 5-6 2 2-5 6z"/>',
-  brewery:     '<path d="M9 2h8l2 7H7L9 2zm1 2-1 5h8l-1-5h-6zM5 10h16v4H5v-4zm2 5h12l-2 9H9L7 15zm2 2 1.5 6h5l1.5-6h-8z"/>',
+  // Ремесленные
+  loom:         '/icons/objects/loom.png',
+  tannery:      '/icons/objects/tannery.png',
+  kiln:         '/icons/objects/kiln.png',
+  carpenter:    '/icons/objects/carpenter.png',
+  brewery:      '/icons/objects/brewery.png',
+  woodcutter:   '/icons/objects/woodcutter.png',
+  bone_carving: '/icons/objects/bone_carving.png',
+  fishing:      '/icons/objects/fishing.png',
+  fishery:      '/icons/objects/fishery.png',
+  jewelry:      '/icons/objects/jewelry.png',
 
   // Хозяйственные
-  well:        '<path d="M9 2h8v3l4 2v2H5V7l4-2V2zm2 2v1.5l2 .8 2-.8V4h-4zM4 10h18v2H4v-2zm1 3h4v11H5V13zm12 0h4v11h-4V13zm-9 0h10v5H8v-5zm0 6h10v5H8v-5z"/>',
-  granary:     '<path d="M13 2l11 8v2H2v-2l11-8zm0 3-7 5h14l-7-5zm-8 9h16v11H5V14zm3 2v7h10v-7H8zm2 2h6v3h-6v-3z"/>',
-  windmill:    '<path d="M12 11.5a1.5 1.5 0 1 0 3 .001A1.5 1.5 0 0 0 12 11.5zM13 2v9h-1V2h1zm0 22v-9h1v9h-1zM2 12.5v1h9v-1H2zm22 0v1h-9v-1h9zM5.4 5.4l1.4-1.4 6.4 6.4-1.4 1.4L5.4 5.4zm14.8 14.8-1.4 1.4-6.4-6.4 1.4-1.4 6.4 6.4zM20.6 5.4l1.4 1.4-6.4 6.4-1.4-1.4 6.4-6.4zM5.4 20.2l-1.4-1.4 6.4-6.4 1.4 1.4-6.4 6.4z"/>',
-  smokehouse:  '<path d="M9 2c0 2.3-2 5-2 8h12c0-3-2-5.7-2-8h-2c0 2 1 4.2 1.3 7H9.7C10 6.2 11 4 11 2H9zm-3 9h14v4H6v-4zm1 5h12v9H7v-9zm3 2v5h6v-5h-6z"/>',
-  stable:      '<path d="M2 14L13 5l11 9v2H2v-2zm3 3h5v7H5v-7zm7 0h9v4h-9v-4zm2 5h5v2h-5v-2z"/>',
-  bathhouse:   '<path d="M5 9l8-6 8 6v14H5V9zm3 2v10h10V11H8zm2 2h6v6h-6v-6zM8 3c0-1.5 2.5-4 2.5-4S9 3 11 3s-3 0-3 0zm5 0c0-1.5 2.5-4 2.5-4S14 3 16 3s-3 0-3 0z"/>',
+  well:         '/icons/objects/well.png',
+  granary:      '/icons/objects/granary.png',
+  stable:       '/icons/objects/stable.png',
+  bathhouse:    '/icons/objects/bathhouse.png',
+  storage:      '/icons/objects/storage.png',
+  farming:      '/icons/objects/farming.png',
+  apiary:       '/icons/objects/apiary.png',
+  medicine:     '/icons/objects/medicine.png',
+  herbalist:    '/icons/objects/herbalist.png',
+  bakery:       '/icons/objects/bakery.png',
 
   // Общественные
-  chapel:      '<path d="M12 1l1.5 3.5h2.5l-2 2 .8 3-2.8-1.8L9.2 9.5l.8-3-2-2h2.5L12 1zm-5 9h10v14H7V10zm3 3v2h4v-2h-4zm0 4v2h4v-2h-4z"/>',
-  market:      '<path d="M2 5h22v5H2V5zm2 5.5h3v13H4v-13zm5.5 0h3v13h-3v-13zm5.5 0h3v13h-3v-13zm5.5 0h3v13h-3v-13zM3 3h4L8 5H3V3zm6 0h4l1 2h-5L9 3zm6 0h4v2h-5l1-2z"/>',
-  bell:        '<path d="M13 1a1 1 0 0 0-1 1v2a8 8 0 0 0-7 8v3h16v-3a8 8 0 0 0-7-8V2a1 1 0 0 0-1-1zM4 16h18v3H4v-3zm4 4h10l-1 3H9l-1-3zm3 3h2a2 2 0 0 1-2 2 2 2 0 0 1-2-2h2z"/>',
-  assembly:    '<path d="M13 2l10 7-10 4-10-4 10-7zm0 4-6 3 6 2.5 6-2.5-6-3zm-9 8 9 4 9-4v2l-9 5-9-5v-2zm0 5 9 4 9-4v2l-9 5-9-5v-2z"/>',
-  scriptorium: '<path d="M3 5a2 2 0 0 1 2-2h7v18H5a2 2 0 0 1-2-2V5zm3 2v2h5V7H6zm0 4v2h5v-2H6zm0 4v2h5v-2H6zm8-10h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7V5zm2 2v2h5V7h-5zm0 4v2h5v-2h-5zm0 4v2h5v-2h-5z"/>',
+  market:       '/icons/objects/market.png',
+  bell:         '/icons/objects/bell.png',
+  scriptorium:  '/icons/objects/scriptorium.png',
+  dock:         '/icons/objects/dock.png',
+  shrine:       '/icons/objects/shrine.png',
 
   // Воинские
-  watchtower:  '<path d="M8 2h10v4l2 2v16H6V8l2-2V2zm2 2v2h2V4h-2zm2 0h2v2h-2V4zm2 0h2v2h-2V4zM8 22h10v-2H8v2zm0-4h10v-2H8v2zm0-4h10V8h-2v4h-4V8H8v6z"/>',
-  gate:        '<path d="M2 24V6h8V4h6v2h8v18H2zm5-2h4V12a4 4 0 0 1 8 0v10h4V8H5v14zm4-10v10h4V12a2 2 0 0 0-4 0z"/>',
-  armory:      '<path d="M13 2 22 6v8c0 5-4 8.5-9 10-5-1.5-9-5-9-10V6l9-4zm0 3-7 3v6c0 3.3 2.5 6 7 7.7 4.5-1.7 7-4.4 7-7.7V8l-7-3zM9 12l2 5 2-1.5 2 1.5 2-5H9z"/>',
-  palisade:    '<path d="M3 24V13L5.5 5 8 13V24H3zm5 0V13l2.5-8 2.5 8v11H8zm5 0V13l2.5-8 2.5 8v11h-5zm5 0V13l2.5-8 2.5 8v11h-5z"/>',
+  watchtower:   '/icons/objects/watchtower.png',
+  armory:       '/icons/objects/armory.png',
 };
 
 export function ObjectIcon({
   slug,
-  className = 'object-icon',
+  size = 54,
+  className = 'hotspot-icon',
 }: {
   slug: string;
+  size?: number;
   className?: string;
 }) {
-  const path = OBJECT_ICONS[slug];
-  if (!path) return null;
+  const src = OBJECT_ICONS[slug];
+  if (!src) return null;
+  // eslint-disable-next-line @next/next/no-img-element
   return (
-    <svg
+    <img
+      src={src}
+      alt={slug}
+      width={size}
+      height={size}
       className={className}
-      viewBox="0 0 26 26"
-      aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: path }}
+      draggable={false}
     />
   );
 }

@@ -333,6 +333,11 @@
 - [x] `src/components/features/admin/SlotsManager.tsx` — `TiptapEditor` для `historical_note` в форме добавления и редактирования слота
 - [x] `src/components/features/admin/ObjectEditTabs.tsx` — тип `Slot` расширен: `historical_note`
 
+### Рестайл админки в духе публичного сайта (2026-05-29)
+- [x] `src/app/admin.css` — `body` получил тёплый paper-радиальный градиент (совпадает с публичным сайтом); `h1/h2/h3` переключены на `var(--serif)` (Lora); добавлены классы `.admin-brand*`, `.admin-nav-link`, `.admin-nav-active`, `.admin-sidebar-footer-link`
+- [x] `src/components/layouts/AdminSidebar.tsx` — все `slate-*`/`bg-white` заменены; добавлен логотип `logo.png` + «Живое Городище» шрифтом Lora (olive-dark) + подпись «Панель администратора»; активный пункт навигации — тёплый olive-фон + золотая левая граница (вертикальный аналог gold-подчёркивания публичной навигации)
+- [x] `src/app/(admin)/layout.tsx` — убран `bg-muted/30` (фон теперь единственный источник — `body` в `admin.css`)
+
 ## В работе
 _(пусто)_
 

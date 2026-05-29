@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { formatMoney, getProgress } from '@/lib/utils/formatMoney';
 import { SupportModal } from './SupportModal';
 import { HistoricalNoteAccordion } from './HistoricalNoteAccordion';
@@ -50,18 +51,27 @@ export function SlotsSection({ slots, objectId, objectSlug, objectName, defaultN
               <div className="slot-card-body">
                 <p className="slot-card-name">{slot.name}</p>
                 <p className="slot-card-meta">
-                  {formatMoney(slot.current_value)} из {formatMoney(slot.goal_value)} · {pct}%
+                  {slot.slot_type === 'labor'
+                    ? `${slot.current_value} ${slot.unit} из ${slot.goal_value} ${slot.unit} · ${pct}%`
+                    : `${formatMoney(slot.current_value)} из ${formatMoney(slot.goal_value)} · ${pct}%`
+                  }
                 </p>
                 <div className="mini-progress">
                   <span style={{ width: `${pct}%` }} />
                 </div>
               </div>
-              <button
-                className="primary-button slot-card-btn"
-                onClick={() => setSelectedSlot(slot)}
-              >
-                Поддержать
-              </button>
+              {slot.slot_type === 'labor' ? (
+                <Link href="/volunteers" className="primary-button slot-card-btn">
+                  Записаться волонтёром
+                </Link>
+              ) : (
+                <button
+                  className="primary-button slot-card-btn"
+                  onClick={() => setSelectedSlot(slot)}
+                >
+                  Поддержать
+                </button>
+              )}
               {hasContent(slot.historical_note) && (
                 <div className="slot-card-historical-note">
                   <HistoricalNoteAccordion content={slot.historical_note!} />

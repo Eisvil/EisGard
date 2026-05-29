@@ -9,6 +9,7 @@ export type SlotForDonate = {
   goal_value: number;
   current_value: number;
   unit: string;
+  slot_type?: string;
   image_url?: string | null;
   description?: string | null;
   historical_note?: Record<string, unknown> | null;

@@ -250,8 +250,8 @@ export function ObjectForm({ object, mode }: Props) {
                     : 'border-border hover:border-primary/50 text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <svg viewBox="0 0 26 26" className="w-5 h-5" fill="currentColor"
-                  dangerouslySetInnerHTML={{ __html: OBJECT_ICONS[key] }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={OBJECT_ICONS[key]} alt={key} className="w-8 h-8 object-contain" />
               </button>
             ))}
           </div>
