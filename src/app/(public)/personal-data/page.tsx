@@ -33,7 +33,7 @@ export default async function PersonalDataPage() {
       <Header />
       <main className="static-page-main">
         <div className="static-page-container">
-          <Link href="/" className="text-link" style={{ fontSize: '14px' }}>← На главную</Link>
+          <Link href="/" className="text-link" style={{ fontSize: '14px', display: 'block', marginBottom: '16px' }}>← На главную</Link>
 
           <h1 className="static-page-title">{page?.title ?? 'Обработка персональных данных'}</h1>
 
