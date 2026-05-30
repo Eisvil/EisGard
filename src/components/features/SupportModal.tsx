@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatMoney } from '@/lib/utils/formatMoney';
+import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 
 export type SupportModalProps = {
   objectId?: string | null;
@@ -28,6 +29,18 @@ export function SupportModal({
   const [amount, setAmount] = useState('1000');
   const [displayName, setDisplayName] = useState(defaultName ?? '');
   const [isAnonymous, setIsAnonymous] = useState(false);
+
+  useEffect(() => {
+    if (defaultName) return;
+    const supabase = createBrowserSupabaseClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).auth.getUser().then(async ({ data: { user } }: { data: { user: { id: string } | null } }) => {
+      if (!user) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any).from('profiles').select('full_name').eq('id', user.id).single();
+      if (data?.full_name) setDisplayName(data.full_name);
+    });
+  }, [defaultName]);
   const [amountError, setAmountError] = useState('');
   const [nameError, setNameError] = useState('');
   const [loading, setLoading] = useState(false);
