@@ -349,6 +349,43 @@
     text-align: center;
   }
 
+  /* ObjectsGrid → горизонтальная карусель */
+  .objects-grid-section {
+    margin-left:  calc(-1 * var(--page-gutter));
+    margin-right: calc(-1 * var(--page-gutter));
+  }
+
+  .objects-grid-section > .eyebrow {
+    padding-left:  var(--page-gutter);
+    padding-right: var(--page-gutter);
+  }
+
+  .objects-grid-track {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    gap: 12px;
+    padding-left:  var(--page-gutter);
+    padding-right: var(--page-gutter);
+    margin-top: 14px;
+    mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  }
+
+  .objects-grid-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .object-grid-card {
+    flex: 0 0 min(63vw, 220px);
+    width: min(63vw, 220px);
+    scroll-snap-align: start;
+  }
+
   /* E3: компактный футер — скрыть принципы */
   .footer-inner > *:not(.footer-brand):not(.footer-legal-row):not(.social) {
     display: none;
