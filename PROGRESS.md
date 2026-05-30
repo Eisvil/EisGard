@@ -390,6 +390,51 @@
 ## В работе
 _(пусто)_
 
+### Баг-фикс: волонтёрские дни пропали (2026-05-30)
+- [x] `supabase/migrations/20260530000001_volunteer_days_rpc.sql` — RPC `get_volunteer_days_total()` (SECURITY DEFINER, GRANT TO anon/authenticated)
+- [x] `src/app/(public)/page.tsx` — прямой запрос к `volunteer_applications` заменён на `supabase.rpc('get_volunteer_days_total')`
+
+### UX-улучшения (2026-05-30)
+
+**Блок D — Auth и базовые UX-исправления:**
+- [x] `src/app/(auth)/layout.tsx` — кнопка «← Живое Городище» (fixed top-left) на всех auth-страницах
+- [x] `src/styles/components.css` — `.auth-back-link`, `.auth-layout-wrapper`, `.password-field-wrap`, `.password-toggle`; фикс: `settlement.jpg` → `settlement.png` (404 console error)
+- [x] `src/app/(auth)/auth/login/page.tsx` + `register/page.tsx` — тогл «показать/скрыть пароль» (Eye/EyeOff из lucide-react)
+- [x] `src/components/features/MapSection.tsx` — кнопка «Вся летопись и новости →» после секции новостей
+- [x] `src/components/features/MaterialsClient.tsx` — кнопка «Предложить материал» (было «Пожертвовать»)
+- [x] `src/app/(public)/volunteers/page.tsx`, `materials/page.tsx` — метатеги `title` + `description`
+- [x] `src/app/(public)/objects/[slug]/page.tsx` — `generateMetadata` с именем объекта в title
+
+**Блок C — Подписка только проектная:**
+- [x] `SubscribeSectionClient` отсутствует на страницах объектов (подтверждено); единая точка — кнопка «Поддержать проект» на главной с `object_id = null`
+
+**Блок F — UX-полировка:**
+- [x] `src/components/features/VolunteersClient.tsx` — гостевой auth-prompt (баннер с кнопками Войти/Зарегистрироваться вместо тихого редиректа); tooltip на disabled-кнопке закрытого заезда
+- [x] `src/components/features/MaterialsClient.tsx` — аналогичный auth-prompt
+- [x] `src/components/features/MapSection.tsx` — `selectedId = null` по умолчанию; левая панель показывает placeholder «Выберите объект на карте»
+- [x] `src/components/features/ChronicleList.tsx` — счётчик событий в активном фильтре `(N)`; пустое состояние с CTA «Стать участником»; склонение слова «событие»
+- [x] `src/components/features/ScrollToTop.tsx` — новый компонент; плавающая кнопка «↑» после 500px скролла
+- [x] `src/app/(public)/layout.tsx` — добавлен `<ScrollToTop />`
+- [x] `src/styles/responsive.css` — fade-mask на `.filters` при `max-width: 920px`
+
+**Блок E — Мобильная навигация:**
+- [x] `src/components/layouts/Header.tsx` — бургер-меню (Menu/X из lucide-react), drawer с 6 nav-ссылками + CTA «Стать участником»; закрытие по outside click и по навигации
+- [x] `src/styles/layout.css` — `.nav-burger`, `.nav-drawer`, `.nav-drawer-link`, `.nav-drawer-cta`
+- [x] `src/styles/responsive.css` — на `≤760px`: `.navigation { display: none }`, `.nav-burger { display: flex }`, `header-inner` 3-column; E2: tap-targets хотспотов ≥44px; E3: footer скрывает принципы
+
+**Блок B — Sequential slots:**
+- [x] `src/components/features/DonateModal.tsx` — тип `SlotForDonate` расширен: `is_locked?`, `prev_slot_name?`
+- [x] `src/app/(public)/objects/[slug]/page.tsx` — вычисление `is_locked` на сервере: слот N заблокирован если слот N-1 не заполнен (sort_order уже был в таблице)
+- [x] `src/components/features/SlotsSection.tsx` — locked-слоты: 50% opacity, граyscale 0.3, иконка Lock, текст «Откроется после завершения "X"»; кнопка не рендерится
+- [x] `src/styles/components.css` — `.slot-card--locked`, `.slot-locked-hint`
+
+**Блок A — Новый лейаут страницы объекта:**
+- [x] `src/components/features/ObjectsGrid.tsx` — новый компонент: сетка всех объектов с выделением текущего; `<Link>` навигация (Next.js soft nav)
+- [x] `src/app/(public)/objects/[slug]/page.tsx` — запрос всех объектов в `Promise.all`; `ObjectsGrid` между прогресс-баром и слотами
+- [x] `src/styles/components.css` — `.objects-grid-section`, `.objects-grid-track`, `.object-grid-card`, `.object-grid-card--active` и смежные классы
+
+**Причина:** ISR-рефактор (2026-05-30) переключил `page.tsx` на `createStaticSupabaseClient()` (anon-ключ). RLS-политика `vol_apps_select_own` требует `auth.uid() = user_id` — анонимный клиент получал 0 строк. RPC с `SECURITY DEFINER` обходит RLS и возвращает только агрегат без раскрытия личных данных.
+
 ---
 
 ## Следующее (по порядку из SPEC)

@@ -46,6 +46,65 @@
   letter-spacing: -.03em;
 }
 
+/* Burger button — hidden on desktop, shown via responsive.css on mobile */
+.nav-burger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--olive-dark);
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile nav drawer */
+.nav-drawer {
+  position: fixed;
+  top: 104px;
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: rgba(253, 250, 242, 0.98);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow-md);
+  padding: 16px var(--page-gutter) 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-drawer nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-drawer-link {
+  display: block;
+  padding: 12px 8px;
+  color: var(--ink-soft);
+  font: var(--text-md) var(--serif);
+  border-bottom: 1px solid var(--line);
+  text-decoration: none;
+}
+
+.nav-drawer-link:last-child { border-bottom: none; }
+.nav-drawer-link.active { color: var(--olive-dark); font-weight: 700; }
+.nav-drawer-link:hover { color: var(--olive-dark); }
+
+.nav-drawer-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  padding: 14px;
+  text-decoration: none;
+  font-size: var(--text-md);
+}
+
 .navigation {
   display: flex;
   justify-content: center;
@@ -126,6 +185,21 @@
   backdrop-filter: blur(4px);
   box-shadow: 0 10px 30px rgba(67, 56, 35, .14);
 }
+
+.feature-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 40px 16px;
+  color: var(--ink-muted);
+  min-height: 300px;
+}
+.feature-placeholder svg { opacity: 0.4; color: var(--olive); }
+.feature-placeholder p { margin: 0; font: 500 var(--text-base) var(--serif); color: var(--ink-soft); }
+.feature-placeholder small { font-size: var(--text-sm); color: var(--ink-muted); }
 
 .feature h1 {
   color: var(--olive-dark);

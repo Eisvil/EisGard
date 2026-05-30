@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { Menu, X } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import type { User } from '@supabase/supabase-js';
 
@@ -15,7 +16,9 @@ export function Header() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   async function fetchProfile(userId: string) {
     const supabase = createBrowserSupabaseClient();
@@ -48,7 +51,7 @@ export function Header() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Close dropdown on outside click
+  // Close user dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -58,6 +61,21 @@ export function Header() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
+
+  // Close nav drawer on outside click
+  useEffect(() => {
+    if (!navOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (drawerRef.current && !drawerRef.current.contains(e.target as Node)) {
+        setNavOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [navOpen]);
+
+  // Close drawer on route change
+  useEffect(() => { setNavOpen(false); }, [pathname]);
 
   async function handleSignOut() {
     const supabase = createBrowserSupabaseClient();
@@ -71,6 +89,15 @@ export function Header() {
     ? displayName.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()
     : '?';
 
+  const navLinks = [
+    { href: '/', label: 'Карта поселения' },
+    { href: '/chronicle', label: 'Летопись' },
+    { href: '/volunteers', label: 'Волонтёрам' },
+    { href: '/materials', label: 'Материалы' },
+    { href: '/partners', label: 'Партнёрам' },
+    { href: '/about', label: 'О проекте' },
+  ];
+
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -80,13 +107,48 @@ export function Header() {
         </Link>
 
         <nav className="navigation" aria-label="Основная навигация">
-          <Link href="/" className={pathname === '/' ? 'active' : ''}>Карта поселения</Link>
-          <Link href="/chronicle" className={pathname === '/chronicle' ? 'active' : ''}>Летопись</Link>
-          <Link href="/volunteers" className={pathname === '/volunteers' ? 'active' : ''}>Волонтёрам</Link>
-          <Link href="/materials" className={pathname === '/materials' ? 'active' : ''}>Материалы</Link>
-          <Link href="/partners" className={pathname === '/partners' ? 'active' : ''}>Партнёрам</Link>
-          <Link href="/about" className={pathname === '/about' ? 'active' : ''}>О проекте</Link>
+          {navLinks.map(({ href, label }) => (
+            <Link key={href} href={href} className={pathname === href ? 'active' : ''}>{label}</Link>
+          ))}
         </nav>
+
+        {/* Burger button — visible only on mobile via CSS */}
+        <button
+          type="button"
+          className="nav-burger"
+          aria-label={navOpen ? 'Закрыть меню' : 'Открыть меню'}
+          aria-expanded={navOpen}
+          onClick={() => setNavOpen(o => !o)}
+        >
+          {navOpen ? <X size={24} strokeWidth={1.75} /> : <Menu size={24} strokeWidth={1.75} />}
+        </button>
+
+        {/* Mobile nav drawer */}
+        {navOpen && (
+          <div className="nav-drawer" ref={drawerRef} role="dialog" aria-label="Навигация">
+            <nav aria-label="Мобильная навигация">
+              {navLinks.map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`nav-drawer-link${pathname === href ? ' active' : ''}`}
+                  onClick={() => setNavOpen(false)}
+                >
+                  {label}
+                </Link>
+              ))}
+            </nav>
+            {!user && (
+              <Link
+                href="/auth/register"
+                className="primary-button nav-drawer-cta"
+                onClick={() => setNavOpen(false)}
+              >
+                Стать участником
+              </Link>
+            )}
+          </div>
+        )}
 
         <div className="header-actions">
           {user ? (

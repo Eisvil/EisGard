@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { Header } from '@/components/layouts/Header';
@@ -5,6 +6,11 @@ import { Footer } from '@/components/layouts/Footer';
 import { PartnersClient } from '@/components/features/PartnersClient';
 
 export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: 'Партнёрам — Живое Городище',
+  description: 'Поддержите строительство исторического поселения ресурсами вашей организации. Партнёры упоминаются на страницах объектов.',
+};
 
 type ObjectOption = {
   id: string;

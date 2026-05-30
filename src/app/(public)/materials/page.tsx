@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { Header } from '@/components/layouts/Header';
@@ -5,6 +6,11 @@ import { Footer } from '@/components/layouts/Footer';
 import { MaterialsClient } from '@/components/features/MaterialsClient';
 
 export const revalidate = 1800;
+
+export const metadata: Metadata = {
+  title: 'Материалы — Живое Городище',
+  description: 'Помогите строительству историческим поселения — пожертвуйте нужные строительные материалы и инструменты.',
+};
 
 type MaterialRow = {
   id: string;

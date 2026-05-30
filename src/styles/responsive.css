@@ -102,6 +102,9 @@
     min-width: 0;
     overflow-x: auto;
     scrollbar-width: none;
+    /* F9: fade-hint о горизонтальной прокрутке */
+    mask-image: linear-gradient(to right, black 80%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
   }
 
   .filters::-webkit-scrollbar {
@@ -190,14 +193,18 @@
     display: inline;
   }
 
+  /* E1: скрываем горизонтальный nav, показываем бургер */
   .navigation {
-    justify-content: flex-start;
-    gap: 25px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    /* Fix 2: fade right edge to hint at scrollability */
-    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent 100%);
-    mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent 100%);
+    display: none;
+  }
+
+  .nav-burger {
+    display: flex;
+  }
+
+  /* Подстраиваем шапку под 3 элемента: logo | burger | actions */
+  .header-inner {
+    grid-template-columns: 1fr auto auto;
   }
 
   .navigation::-webkit-scrollbar {
@@ -450,6 +457,32 @@
   .camp-action a.primary-button {
     width: 100%;
     text-align: center;
+  }
+
+  /* E2: увеличить tap-targets хотспотов карты до ≥44px */
+  .hotspot {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .hotspot-round {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* E3: компактный футер — скрыть принципы */
+  .footer-inner > *:not(.footer-brand):not(.footer-legal-row):not(.social) {
+    display: none;
+  }
+
+  .footer-inner {
+    gap: 16px;
+    padding-top: 24px;
+    padding-bottom: 24px;
+  }
+
+  .footer-scene {
+    display: none;
   }
 }
 

@@ -57,6 +57,14 @@ type ChronicleListProps = {
 
 const PER_PAGE = 20;
 
+function pluralEvents(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'событие';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'события';
+  return 'событий';
+}
+
 export function ChronicleList({ initialData, initialTotal }: ChronicleListProps) {
   const [events, setEvents] = useState<ChronicleEvent[]>(initialData);
   const [total, setTotal] = useState(initialTotal);
@@ -165,15 +173,30 @@ export function ChronicleList({ initialData, initialTotal }: ChronicleListProps)
             className={`chronicle-filter${filter === key ? ' active' : ''}`}
             onClick={() => applyFilter(key)}
           >
-            {label}
+            {label}{key === filter && total > 0 ? ` (${total})` : ''}
           </button>
         ))}
       </div>
 
-      <p className="chronicle-count">{total} событий в летописи</p>
+      <p className="chronicle-count">{total} {pluralEvents(total)} в летописи</p>
 
       {events.length === 0 && !loading && (
-        <p className="chronicle-empty">Событий не найдено.</p>
+        <div className="chronicle-empty-state">
+          <p className="chronicle-empty-icon">📜</p>
+          <p className="chronicle-empty-title">
+            {filter === 'all' ? 'Летопись пока пуста' : 'Событий не найдено'}
+          </p>
+          {filter === 'all' && (
+            <p className="chronicle-empty-sub">
+              Стань первым участником — поддержи проект и войди в историю Городища
+            </p>
+          )}
+          {filter === 'all' && (
+            <a href="/auth/register" className="primary-button chronicle-empty-cta">
+              Стать участником
+            </a>
+          )}
+        </div>
       )}
 
       <ul className="chronicle-full-list">

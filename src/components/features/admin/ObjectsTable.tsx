@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { formatMoney } from '@/lib/utils/formatMoney';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -49,11 +51,14 @@ export function ObjectsTable({ objects }: Props) {
   const [rows, setRows] = useState<ObjectRow[]>(objects);
 
   async function handleDelete(id: string, slug: string) {
+    void slug;
     const res = await fetch(`/api/admin/objects/${id}`, { method: 'DELETE' });
     if (res.ok) {
       setRows((prev) => prev.filter((o) => o.id !== id));
+      toast.success('Объект удалён');
       router.refresh();
-      void slug;
+    } else {
+      toast.error('Не удалось удалить объект');
     }
   }
 
@@ -115,7 +120,9 @@ export function ObjectsTable({ objects }: Props) {
                     </TableCell>
                     <TableCell className="text-right text-sm">
                       {obj.total_goal_rub > 0 ? (
-                        <span>{pct}%</span>
+                        <span title={`${formatMoney(obj.total_raised_rub)} из ${formatMoney(obj.total_goal_rub)}`}>
+                          {pct}% · {formatMoney(obj.total_raised_rub)}
+                        </span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}

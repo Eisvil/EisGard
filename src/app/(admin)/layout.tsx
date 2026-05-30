@@ -1,6 +1,7 @@
 import '@/app/admin.css';
 import type { ReactNode } from 'react';
 import { AdminSidebar } from '@/components/layouts/AdminSidebar';
+import { Toaster } from 'sonner';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <main className="flex-1 min-w-0 p-6 overflow-auto">
         {children}
       </main>
+      <Toaster position="bottom-right" richColors />
     </div>
   );
 }

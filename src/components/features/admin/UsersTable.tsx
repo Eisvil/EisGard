@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -107,9 +108,10 @@ export default function UsersTable({
         setUsers((prev) =>
           prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u)),
         );
+        toast.success('Роль изменена');
       } else {
         const j = await res.json();
-        alert(j?.error?.message ?? 'Ошибка изменения роли');
+        toast.error(j?.error?.message ?? 'Ошибка изменения роли');
       }
     } finally {
       setRoleLoadingId(null);

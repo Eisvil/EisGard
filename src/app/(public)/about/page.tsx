@@ -60,23 +60,6 @@ export default async function AboutPage() {
           </div>
         )}
 
-        <div className="about-principles">
-          <div className="about-principle-card">
-            <div className="about-principle-icon">◈</div>
-            <h3>Открытость</h3>
-            <p>Показываем процесс честно и без прикрас. Все решения — с вами.</p>
-          </div>
-          <div className="about-principle-card">
-            <div className="about-principle-icon">▤</div>
-            <h3>Историческая основа</h3>
-            <p>Изучаем быт и ремёсла XII–XIII веков Псковской земли.</p>
-          </div>
-          <div className="about-principle-card">
-            <div className="about-principle-icon">♧</div>
-            <h3>Устойчивость</h3>
-            <p>Строим в гармонии с лесом и людьми. Не навсегда, а на пользу.</p>
-          </div>
-        </div>
       </div>
     </main>
     <Footer />

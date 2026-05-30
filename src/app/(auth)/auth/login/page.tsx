@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 
 function LoginForm() {
@@ -12,6 +13,7 @@ function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; general?: string }>({});
   const [loading, setLoading] = useState(false);
   const [unconfirmed, setUnconfirmed] = useState(false);
@@ -105,15 +107,26 @@ function LoginForm() {
 
           <div className="modal-field">
             <label htmlFor="password">Пароль</label>
-            <input
-              id="password"
-              type="password"
-              className={`input-field${errors.password ? ' error' : ''}`}
-              value={password}
-              onChange={e => { setPassword(e.target.value); setErrors(p => ({ ...p, password: undefined })); }}
-              disabled={loading}
-              autoComplete="current-password"
-            />
+            <div className="password-field-wrap">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                className={`input-field${errors.password ? ' error' : ''}`}
+                value={password}
+                onChange={e => { setPassword(e.target.value); setErrors(p => ({ ...p, password: undefined })); }}
+                disabled={loading}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             {errors.password && <p className="modal-error">{errors.password}</p>}
           </div>
 

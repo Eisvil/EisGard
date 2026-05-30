@@ -13,6 +13,8 @@ export type SlotForDonate = {
   image_url?: string | null;
   description?: string | null;
   historical_note?: Record<string, unknown> | null;
+  is_locked?: boolean;
+  prev_slot_name?: string;
 };
 
 type Props = {

@@ -1,8 +1,14 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { createServerSupabaseClient, createServiceSupabaseClient } from '@/lib/supabase/server';
 import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { VolunteersClient } from '@/components/features/VolunteersClient';
+
+export const metadata: Metadata = {
+  title: 'Волонтёрам — Живое Городище',
+  description: 'Приедьте помочь строить историческое поселение. Волонтёрские заезды: работа руками, проживание и питание бесплатно.',
+};
 
 type CampRow = {
   id: string;
@@ -99,6 +105,7 @@ export default async function VolunteersPage() {
     ...camp,
     spots_left: Math.max(0, camp.max_volunteers - (countMap[camp.id] ?? 0)),
     date_range: formatDateRange(camp.date_from, camp.date_to),
+    date_to: camp.date_to,
   }));
 
   return (

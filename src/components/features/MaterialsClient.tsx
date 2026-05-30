@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { MaterialModal } from './MaterialModal';
 import type { MaterialItem } from './MaterialModal';
@@ -20,7 +19,7 @@ export function MaterialsClient({ materials }: Props) {
   const [activeMaterial, setActiveMaterial] = useState<MaterialWithObject | null>(null);
   const [donatedIds, setDonatedIds] = useState<Set<string>>(new Set());
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const router = useRouter();
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   useEffect(() => {
     createBrowserSupabaseClient().auth.getUser().then(({ data }) => {
@@ -30,7 +29,7 @@ export function MaterialsClient({ materials }: Props) {
 
   function handleDonate(material: MaterialWithObject) {
     if (!isLoggedIn) {
-      router.push('/auth/login?next=/materials');
+      setShowAuthPrompt(true);
       return;
     }
     setActiveMaterial(material);
@@ -43,6 +42,15 @@ export function MaterialsClient({ materials }: Props) {
 
   return (
     <>
+      {showAuthPrompt && (
+        <div className="auth-prompt-banner panel">
+          <p>Для подачи заявки нужен аккаунт</p>
+          <div className="auth-prompt-actions">
+            <a href="/auth/login?next=/materials" className="primary-button auth-prompt-btn">Войти</a>
+            <a href="/auth/register?next=/materials" className="text-link auth-prompt-btn">Зарегистрироваться</a>
+          </div>
+        </div>
+      )}
       <div className="materials-list">
         {materials.map((m) => {
           const donated = donatedIds.has(m.id);
@@ -86,7 +94,7 @@ export function MaterialsClient({ materials }: Props) {
                     onClick={() => handleDonate(m)}
                     style={{ padding: '10px 22px', fontSize: '14px', whiteSpace: 'nowrap' }}
                   >
-                    {isFull ? 'Набрали' : 'Пожертвовать'}
+                    {isFull ? 'Собрано' : 'Предложить материал'}
                   </button>
                 )}
               </div>

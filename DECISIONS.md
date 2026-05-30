@@ -226,6 +226,16 @@ Tailwind-утилиты (размеры, отступы, flex) в компоне
 
 Функция `buildQuickpayUrl()` не изменилась.
 
+## Волонтёрские дни на главной — RPC вместо прямого запроса к таблице
+
+`page.tsx` (ISR, anon-ключ) не может читать `volunteer_applications` напрямую — RLS-политика `vol_apps_select_own` требует аутентификации.
+
+**Решение:** RPC `get_volunteer_days_total()` с `SECURITY DEFINER` — возвращает только `SUM(days_worked)` для `status='completed'`. Личные данные не раскрываются. `GRANT EXECUTE TO anon, authenticated` открывает вызов для публичного клиента.
+
+**Файлы:** `supabase/migrations/20260530000001_volunteer_days_rpc.sql`, `src/app/(public)/page.tsx`.
+
+---
+
 ## `donations.amount_kopecks_check` — минимум > 0 вместо >= 10000
 
 Было: `CHECK (amount_kopecks >= 10000)`.  

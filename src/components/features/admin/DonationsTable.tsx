@@ -11,6 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Plus, PenLine, RefreshCw, Trash2, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -106,9 +107,25 @@ export default function DonationsTable({
     }
   }, []);
 
-  function applyFilters() {
+  function handleSourceChange(val: string) {
+    const v = val === 'all' ? '' : val;
+    setSourceFilter(v);
     setPage(1);
-    fetchDonations(1, statusFilter, sourceFilter, objectFilter);
+    fetchDonations(1, statusFilter, v, objectFilter);
+  }
+
+  function handleStatusChange(val: string) {
+    const v = val === 'all' ? '' : val;
+    setStatusFilter(v);
+    setPage(1);
+    fetchDonations(1, v, sourceFilter, objectFilter);
+  }
+
+  function handleObjectChange(val: string) {
+    const v = val === 'all' ? '' : val;
+    setObjectFilter(v);
+    setPage(1);
+    fetchDonations(1, statusFilter, sourceFilter, v);
   }
 
   function handlePageChange(p: number) {
@@ -121,12 +138,17 @@ export default function DonationsTable({
   async function handleConfirm(id: string) {
     setActionLoading(id);
     try {
-      await fetch(`/api/admin/donations/${id}`, {
+      const res = await fetch(`/api/admin/donations/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'confirm' }),
       });
-      fetchDonations(page, statusFilter, sourceFilter, objectFilter);
+      if (res.ok) {
+        toast.success('Пожертвование подтверждено');
+        fetchDonations(page, statusFilter, sourceFilter, objectFilter);
+      } else {
+        toast.error('Ошибка при подтверждении');
+      }
     } finally {
       setActionLoading(null);
     }
@@ -135,8 +157,13 @@ export default function DonationsTable({
   async function handleDelete(id: string) {
     setActionLoading(id);
     try {
-      await fetch(`/api/admin/donations/${id}`, { method: 'DELETE' });
-      fetchDonations(page, statusFilter, sourceFilter, objectFilter);
+      const res = await fetch(`/api/admin/donations/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Пожертвование удалено');
+        fetchDonations(page, statusFilter, sourceFilter, objectFilter);
+      } else {
+        toast.error('Ошибка при удалении');
+      }
     } finally {
       setActionLoading(null);
       setDeleteTarget(null);
@@ -148,7 +175,7 @@ export default function DonationsTable({
       {/* Фильтры */}
       <div className="flex flex-wrap gap-2 items-end">
         <div className="w-36">
-          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+          <Select value={sourceFilter || 'all'} onValueChange={handleSourceChange}>
             <SelectTrigger><SelectValue placeholder="Источник" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все источники</SelectItem>
@@ -159,7 +186,7 @@ export default function DonationsTable({
           </Select>
         </div>
         <div className="w-36">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter || 'all'} onValueChange={handleStatusChange}>
             <SelectTrigger><SelectValue placeholder="Статус" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все статусы</SelectItem>
@@ -170,7 +197,7 @@ export default function DonationsTable({
           </Select>
         </div>
         <div className="w-44">
-          <Select value={objectFilter} onValueChange={setObjectFilter}>
+          <Select value={objectFilter || 'all'} onValueChange={handleObjectChange}>
             <SelectTrigger><SelectValue placeholder="Объект" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Все объекты</SelectItem>
@@ -180,9 +207,7 @@ export default function DonationsTable({
             </SelectContent>
           </Select>
         </div>
-        <Button variant="outline" size="sm" onClick={applyFilters}>
-          <RefreshCw className="h-3.5 w-3.5 mr-1" /> Применить
-        </Button>
+        {loading && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
         <div className="ml-auto">
           <Button size="sm" onClick={() => setManualOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> Добавить вручную

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -30,8 +31,10 @@ const NAV_ITEMS = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const [signingOut, setSigningOut] = useState(false);
 
   async function handleSignOut() {
+    setSigningOut(true);
     const supabase = createBrowserSupabaseClient();
     await supabase.auth.signOut();
     router.push('/');
@@ -84,10 +87,11 @@ export function AdminSidebar() {
         </Link>
         <button
           onClick={handleSignOut}
+          disabled={signingOut}
           className="admin-sidebar-footer-link danger"
         >
           <LogOut size={14} />
-          Выйти
+          {signingOut ? 'Выход…' : 'Выйти'}
         </button>
       </div>
     </aside>

@@ -221,15 +221,16 @@ export default function CampsManager({ initialCamps }: { initialCamps: Camp[] })
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
+                        className="gap-1.5 text-xs"
                         title={camp.is_open ? 'Закрыть набор' : 'Открыть набор'}
                         disabled={loadingId === camp.id}
                         onClick={() => handleToggleOpen(camp)}
                       >
                         {camp.is_open ? (
-                          <Lock className="h-4 w-4" />
+                          <><Lock className="h-3.5 w-3.5" /> Закрыть</>
                         ) : (
-                          <LockOpen className="h-4 w-4" />
+                          <><LockOpen className="h-3.5 w-3.5" /> Открыть</>
                         )}
                       </Button>
                       <Button

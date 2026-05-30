@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { Lock } from 'lucide-react';
 import { formatMoney, getProgress } from '@/lib/utils/formatMoney';
 import { SupportModal } from './SupportModal';
 import { HistoricalNoteAccordion } from './HistoricalNoteAccordion';
@@ -37,8 +38,9 @@ export function SlotsSection({ slots, objectId, objectSlug, objectName, defaultN
       <div className="slots-list">
         {slots.map((slot) => {
           const pct = getProgress(slot.current_value, slot.goal_value);
+          const isLocked = slot.is_locked === true;
           return (
-            <div key={slot.id} className="slot-card">
+            <div key={slot.id} className={`slot-card${isLocked ? ' slot-card--locked' : ''}`}>
               {slot.image_url ? (
                 <img
                   src={slot.image_url}
@@ -50,29 +52,41 @@ export function SlotsSection({ slots, objectId, objectSlug, objectName, defaultN
               )}
               <div className="slot-card-body">
                 <p className="slot-card-name">{slot.name}</p>
-                <p className="slot-card-meta">
-                  {slot.slot_type === 'labor'
-                    ? `${slot.current_value} ${slot.unit} из ${slot.goal_value} ${slot.unit} · ${pct}%`
-                    : `${formatMoney(slot.current_value)} из ${formatMoney(slot.goal_value)} · ${pct}%`
-                  }
-                </p>
-                <div className="mini-progress">
-                  <span style={{ width: `${pct}%` }} />
-                </div>
+                {!isLocked && (
+                  <>
+                    <p className="slot-card-meta">
+                      {slot.slot_type === 'labor'
+                        ? `${slot.current_value} ${slot.unit} из ${slot.goal_value} ${slot.unit} · ${pct}%`
+                        : `${formatMoney(slot.current_value)} из ${formatMoney(slot.goal_value)} · ${pct}%`
+                      }
+                    </p>
+                    <div className="mini-progress">
+                      <span style={{ width: `${pct}%` }} />
+                    </div>
+                  </>
+                )}
+                {isLocked && slot.prev_slot_name && (
+                  <span className="slot-locked-hint">
+                    <Lock size={13} strokeWidth={1.75} aria-hidden="true" />
+                    Откроется после завершения «{slot.prev_slot_name}»
+                  </span>
+                )}
               </div>
-              {slot.slot_type === 'labor' ? (
-                <Link href="/volunteers" className="primary-button slot-card-btn">
-                  Записаться волонтёром
-                </Link>
-              ) : (
-                <button
-                  className="primary-button slot-card-btn"
-                  onClick={() => setSelectedSlot(slot)}
-                >
-                  Поддержать
-                </button>
+              {!isLocked && (
+                slot.slot_type === 'labor' ? (
+                  <Link href="/volunteers" className="primary-button slot-card-btn">
+                    Записаться волонтёром
+                  </Link>
+                ) : (
+                  <button
+                    className="primary-button slot-card-btn"
+                    onClick={() => setSelectedSlot(slot)}
+                  >
+                    Поддержать
+                  </button>
+                )
               )}
-              {hasContent(slot.historical_note) && (
+              {!isLocked && hasContent(slot.historical_note) && (
                 <div className="slot-card-historical-note">
                   <HistoricalNoteAccordion content={slot.historical_note!} />
                 </div>

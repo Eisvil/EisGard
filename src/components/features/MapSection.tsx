@@ -108,8 +108,7 @@ type MapSectionProps = {
 
 export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile: initialProfile }: MapSectionProps) {
   const router = useRouter();
-  const defaultObj = objects.find(o => o.slug === 'kuznitsa') ?? objects[0];
-  const [selectedId, setSelectedId] = useState(defaultObj?.id ?? '');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeZone, setActiveZone] = useState<string>(ALL_ZONES);
   const [mapScale, setMapScale] = useState(1);
   const [toastMsg, setToastMsg] = useState('');
@@ -217,7 +216,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
     });
   }, []);
 
-  const selected = objects.find(o => o.id === selectedId) ?? objects[0];
+  const selected = selectedId ? objects.find(o => o.id === selectedId) ?? null : null;
 
   const visibleCards = activeZone === ALL_ZONES
     ? objects
@@ -296,9 +295,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
   }
 
   const selStatus = selected ? getStatusInfo(selected.status) : null;
-  const selProgress = selected
-    ? getProgress(selected.total_raised_rub, selected.total_goal_rub)
-    : 0;
+  const selProgress = selected ? getProgress(selected.total_raised_rub, selected.total_goal_rub) : 0;
   const selDesc = selected ? getDescription(selected.description) : '';
 
   function renderMoneyLabel(raised: number, goal: number, status: string) {
@@ -312,7 +309,16 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
       {/* Left sidebar — selected object */}
       <aside className="feature panel" aria-label="Выбранный объект">
         <p className="eyebrow"><span></span> Объект городища <span></span></p>
-        {selected && (
+        {!selected ? (
+          <div className="feature-placeholder">
+            <svg viewBox="0 0 48 48" width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <circle cx="24" cy="20" r="10"/>
+              <path d="M12 44c0-6.6 5.4-12 12-12s12 5.4 12 12"/>
+            </svg>
+            <p>Выберите объект на карте</p>
+            <small>Нажмите на любой значок на карте поселения</small>
+          </div>
+        ) : (
           <>
             <h1>{selected.name}</h1>
             <p className="selected-zone">
@@ -385,11 +391,13 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
               <strong>{userProfile?.name ?? 'Гость городища'}</strong>
               <small>{userProfile?.title ?? (userProfile ? 'Участник' : 'Войдите, чтобы участвовать')}</small>
             </div>
-            <div className="player-resources" aria-label="Ресурсы участника">
-              <span><b><Star size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile ? userProfile.points.toLocaleString('ru') : '—'} <small>баллов</small></span>
-              <span><b><Coins size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile ? Math.round(userProfile.donated_kopecks / 100).toLocaleString('ru') : '—'} <small>руб.</small></span>
-              <span><b><Clock size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile ? userProfile.volunteer_days : '—'} <small>дн</small></span>
-            </div>
+            {userProfile && (
+              <div className="player-resources" aria-label="Ресурсы участника">
+                <span><b><Star size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile.points.toLocaleString('ru')} <small>баллов</small></span>
+                <span><b><Coins size={15} strokeWidth={1.75} aria-hidden="true" /></b> {Math.round(userProfile.donated_kopecks / 100).toLocaleString('ru')} <small>руб.</small></span>
+                <span><b><Clock size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile.volunteer_days} <small>дн</small></span>
+              </div>
+            )}
           </section>
 
           {/* Hotspots — positioned to match actual rendered image bounds */}
@@ -403,7 +411,11 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
                   key={obj.id}
                   type="button"
                   className={`hotspot ${obj.id === selectedId ? 'selected' : ''} ${labelSide}`}
-                  style={{ left: `${x}%`, top: `${y}%` }}
+                  style={{
+                    left: `${x}%`,
+                    top: `${y}%`,
+                    '--status-color': getStatusInfo(obj.status).color,
+                  } as React.CSSProperties}
                   aria-label={obj.short_name ?? obj.name}
                   onClick={() => selectObject(obj.id)}
                 >
@@ -422,13 +434,6 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
             <button type="button" aria-label="Отдалить" onClick={() => handleZoom(-0.06)}>−</button>
           </div>
 
-          {/* Legend */}
-          <ul className="legend panel" aria-label="Статусы объектов">
-            <li><span className="planned"></span>Замысел</li>
-            <li><span className="building"></span>Строится</li>
-            <li><span className="done"></span>Завершён</li>
-            <li><span className="working"></span>Действует</li>
-          </ul>
         </div>
       </section>
 
@@ -624,6 +629,14 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
             </div>
           </article>
         ))}
+        <button
+          className="text-link full-link"
+          type="button"
+          onClick={() => router.push('/news')}
+          style={{ gridColumn: '1 / -1', marginTop: '8px' }}
+        >
+          Все новости <span>→</span>
+        </button>
       </section>
 
       {/* Toast */}

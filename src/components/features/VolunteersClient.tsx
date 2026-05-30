@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { VolunteerModal } from './VolunteerModal';
 
 export type Camp = {
   id: string;
   name: string;
   date_range: string;
+  date_to?: string;
   max_volunteers: number;
   spots_left: number;
   description: string | null;
@@ -30,14 +30,14 @@ type Props = {
 
 export function VolunteersClient({ camps, skills, isLoggedIn, defaultName, userAppliedCampIds = [] }: Props) {
   const [openCampId, setOpenCampId] = useState<string | null>(null);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [appliedCamps, setAppliedCamps] = useState<Set<string>>(new Set(userAppliedCampIds));
-  const router = useRouter();
 
   const openCamp = openCampId ? camps.find((c) => c.id === openCampId) : null;
 
   function handleApply(campId: string) {
     if (!isLoggedIn) {
-      router.push('/auth/login?next=/volunteers');
+      setShowAuthPrompt(true);
       return;
     }
     setOpenCampId(campId);
@@ -50,12 +50,24 @@ export function VolunteersClient({ camps, skills, isLoggedIn, defaultName, userA
 
   return (
     <>
+      {showAuthPrompt && (
+        <div className="auth-prompt-banner panel">
+          <p>Для подачи заявки нужен аккаунт</p>
+          <div className="auth-prompt-actions">
+            <a href="/auth/login?next=/volunteers" className="primary-button auth-prompt-btn">Войти</a>
+            <a href="/auth/register?next=/volunteers" className="text-link auth-prompt-btn">Зарегистрироваться</a>
+          </div>
+        </div>
+      )}
       <div className="camps-list">
         {camps.map((camp) => {
           const isFull = camp.spots_left <= 0;
           const isClosed = !camp.is_open;
+          const isPast = camp.date_to ? new Date(camp.date_to) < new Date() : false;
           const applied = appliedCamps.has(camp.id);
           const disabled = isFull || isClosed || applied;
+          const closedLabel = isPast ? 'Заезд завершён' : 'Набор закрыт';
+          const disabledTitle = isClosed ? (isPast ? 'Заезд уже прошёл' : 'Запись закрыта') : isFull ? 'Свободных мест нет' : undefined;
 
           return (
             <div key={camp.id} className="camp-card panel">
@@ -68,7 +80,7 @@ export function VolunteersClient({ camps, skills, isLoggedIn, defaultName, userA
                       className={`camp-spots${isFull || isClosed ? ' camp-spots--closed' : ''}`}
                     >
                       {isClosed
-                        ? 'Набор закрыт'
+                        ? closedLabel
                         : isFull
                         ? 'Мест нет'
                         : `${camp.spots_left} из ${camp.max_volunteers} мест`}
@@ -88,8 +100,9 @@ export function VolunteersClient({ camps, skills, isLoggedIn, defaultName, userA
                       disabled={disabled}
                       onClick={() => handleApply(camp.id)}
                       style={{ padding: '12px 24px', fontSize: '15px' }}
+                      title={disabledTitle}
                     >
-                      {disabled && !applied ? (isClosed ? 'Закрыт' : 'Мест нет') : 'Подать заявку'}
+                      {disabled && !applied ? (isClosed ? (isPast ? 'Завершён' : 'Закрыт') : 'Мест нет') : 'Подать заявку'}
                     </button>
                   )}
                 </div>

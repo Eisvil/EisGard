@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createStaticSupabaseClient } from '@/lib/supabase/static';
@@ -10,7 +11,9 @@ import { DonatedToast } from '@/components/features/DonatedToast';
 import { ObjectViewTracker } from '@/components/features/ObjectViewTracker';
 import { HistoricalNoteAccordion } from '@/components/features/HistoricalNoteAccordion';
 import { CommentsSection } from '@/components/features/CommentsSection';
+import { ObjectsGrid } from '@/components/features/ObjectsGrid';
 import type { SlotForDonate } from '@/components/features/DonateModal';
+import type { ObjectGridItem } from '@/components/features/ObjectsGrid';
 
 type ObjectRow = {
   id: string;
@@ -47,6 +50,25 @@ type ChronicleRow = {
 };
 
 export const revalidate = 3600;
+
+export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
+  const { slug } = await params;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const supabase = createStaticSupabaseClient() as any;
+  const { data } = await supabase
+    .from('objects')
+    .select('name, description')
+    .eq('slug', slug)
+    .maybeSingle();
+  const name = data?.name ?? 'Объект';
+  const desc = typeof data?.description === 'string'
+    ? data.description.slice(0, 160)
+    : 'Поддержите строительство исторического поселения — поделитесь вкладом в летопись Городища.';
+  return {
+    title: `${name} — поддержать | Живое Городище`,
+    description: desc,
+  };
+}
 
 export async function generateStaticParams() {
   const supabase = createStaticSupabaseClient();
@@ -85,37 +107,52 @@ export default async function ObjectPage({ params }: { params: Promise<Params> }
   const object = rawObject as ObjectRow | null;
   if (!object) notFound();
 
-  const { data: rawSlots } = await supabase
-    .from('slots')
-    .select('id, name, goal_value, current_value, unit, slot_type, image_url, description, historical_note')
-    .eq('object_id', object.id)
-    .eq('is_closed', false)
-    .order('sort_order');
-
-  const { data: rawChronicle } = await supabase
-    .from('chronicle_events')
-    .select('id, display_name, is_anonymous, amount_kopecks, created_at')
-    .eq('object_id', object.id)
-    .eq('event_type', 'donation')
-    .order('created_at', { ascending: false })
-    .limit(20);
+  const [{ data: rawSlots }, { data: rawChronicle }, { data: rawAllObjects }] = await Promise.all([
+    supabase
+      .from('slots')
+      .select('id, name, goal_value, current_value, unit, slot_type, image_url, description, historical_note')
+      .eq('object_id', object.id)
+      .eq('is_closed', false)
+      .order('sort_order'),
+    supabase
+      .from('chronicle_events')
+      .select('id, display_name, is_anonymous, amount_kopecks, created_at')
+      .eq('object_id', object.id)
+      .eq('event_type', 'donation')
+      .order('created_at', { ascending: false })
+      .limit(20),
+    supabase
+      .from('objects')
+      .select('id, slug, name, short_name, icon_key, cover_url, status, total_raised_rub, total_goal_rub')
+      .neq('status', 'draft')
+      .order('sort_order'),
+  ]);
 
   const slots = (rawSlots ?? []) as unknown as SlotRow[];
   const chronicle = (rawChronicle ?? []) as ChronicleRow[];
+  const allObjects = (rawAllObjects ?? []) as ObjectGridItem[];
 
   const statusInfo = OBJECT_STATUS[object.status as keyof typeof OBJECT_STATUS] ?? OBJECT_STATUS.planned;
   const pct = getProgress(object.total_raised_rub, object.total_goal_rub);
-  const allSlots: SlotForDonate[] = slots.map((s) => ({
-    id: s.id,
-    name: s.name,
-    goal_value: s.goal_value,
-    current_value: s.current_value,
-    unit: s.unit,
-    slot_type: s.slot_type,
-    image_url: s.image_url,
-    description: s.description,
-    historical_note: s.historical_note,
-  }));
+
+  // Sequential slot locking: slot N locked if slot N-1 not fully funded
+  const allSlots: SlotForDonate[] = slots.map((s, i) => {
+    const prevSlot = i > 0 ? slots[i - 1] : null;
+    const is_locked = prevSlot !== null && prevSlot.current_value < prevSlot.goal_value;
+    return {
+      id: s.id,
+      name: s.name,
+      goal_value: s.goal_value,
+      current_value: s.current_value,
+      unit: s.unit,
+      slot_type: s.slot_type,
+      image_url: s.image_url,
+      description: s.description,
+      historical_note: s.historical_note,
+      is_locked,
+      prev_slot_name: prevSlot?.name,
+    };
+  });
 
   return (
     <>
@@ -164,8 +201,10 @@ export default async function ObjectPage({ params }: { params: Promise<Params> }
         </div>
       )}
 
+      <ObjectsGrid objects={allObjects} currentSlug={object.slug} />
+
       <div style={{ marginTop: '28px' }}>
-        <div className="eyebrow" style={{ marginBottom: '20px' }}>Поддержать объект</div>
+        <div className="eyebrow" style={{ marginBottom: '20px' }}>Выберите направление поддержки</div>
         <SlotsSection
           slots={allSlots}
           objectId={object.id}

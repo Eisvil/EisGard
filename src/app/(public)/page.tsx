@@ -18,7 +18,7 @@ export default async function HomePage() {
     { data: newsRaw },
     { count: totalUsers },
     { data: donationsRaw },
-    { data: volunteerRaw },
+    { data: volunteerDaysData },
     { count: objectsDone },
   ] = await Promise.all([
     supabase
@@ -38,14 +38,15 @@ export default async function HomePage() {
       .limit(5),
     supabase.from('profiles').select('id', { count: 'exact', head: true }),
     supabase.from('donations').select('amount_kopecks').eq('status', 'confirmed'),
-    supabase.from('volunteer_applications').select('days_worked').eq('status', 'completed'),
+    // RPC обходит RLS (anon-клиент не видит volunteer_applications напрямую)
+    supabase.rpc('get_volunteer_days_total'),
     supabase.from('objects').select('id', { count: 'exact', head: true }).in('status', ['done', 'working']),
   ]);
 
   const siteStats: SiteStats = {
     users:          totalUsers ?? 0,
     raised_kopecks: (donationsRaw ?? []).reduce((s: number, d: { amount_kopecks: number }) => s + (d.amount_kopecks ?? 0), 0),
-    volunteer_days: (volunteerRaw ?? []).reduce((s: number, v: { days_worked: number }) => s + (v.days_worked ?? 0), 0),
+    volunteer_days: (volunteerDaysData as number | null) ?? 0,
     objects_done:   objectsDone ?? 0,
   };
 
