@@ -435,6 +435,18 @@ _(пусто)_
 
 **Причина:** ISR-рефактор (2026-05-30) переключил `page.tsx` на `createStaticSupabaseClient()` (anon-ключ). RLS-политика `vol_apps_select_own` требует `auth.uid() = user_id` — анонимный клиент получал 0 строк. RPC с `SECURITY DEFINER` обходит RLS и возвращает только агрегат без раскрытия личных данных.
 
+### Баг-фикс: CSS cascade в production webpack (2026-05-30)
+
+- [x] `src/styles/map.css` — перенесены адаптивные блоки `@media (max-width: 1399px)` и `@media (max-width: 760px)` для `.settlement-map`, `.map-canvas`, `.player-hud`, `.hotspot*`, `.zoom`, `.legend` из `responsive.css` в `map.css`
+- [x] `src/styles/responsive.css` — удалены дублирующиеся map-специфичные правила; добавлен `grid-template-rows: auto` в `.header-inner` на ≤760px (сброс пустой 48px строки скрытой навигации)
+
+**Причина:** Next.js production webpack разбивает CSS на чанки и загружает `map.css` отдельным `<link>` **после** основного бандла (который содержит `responsive.css`). Базовые правила `map.css` без медиазапроса перебивали мобильные переопределения из `responsive.css` — player-hud получал десктопные размеры (`top:52px`, `min-width:666px`), карта растягивалась на `max(748px, 100svh-76px)`. Решение: все правила карты в одном файле → в одном чанке → правильный каскад.
+
+### UX: карусель «Другие объекты городища» на мобиле (2026-05-30)
+
+- [x] `src/styles/responsive.css` — на `≤760px` блок `.objects-grid-section` выходит за padding страницы (отрицательные margin), `.objects-grid-track` переключается с `display:grid` на `flex / overflow-x:auto / scroll-snap-type:x mandatory`, карточки `.object-grid-card` фиксируются на `min(63vw, 220px)` с `scroll-snap-align:start`; правый fade-gradient подсказывает о прокрутке
+- Desktop-сетка (`grid auto-fill minmax(180px,1fr)`) не тронута
+
 ---
 
 ## Следующее (по порядку из SPEC)
