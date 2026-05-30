@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { TiptapRenderer } from '@/components/features/TiptapRenderer';
 import { Header } from '@/components/layouts/Header';
@@ -33,11 +34,7 @@ export default async function AboutPage() {
       <Header />
       <main className="static-page-main">
       <div className="static-page-container">
-        <div className="eyebrow">
-          <span />
-          О проекте
-          <span />
-        </div>
+        <Link href="/" className="text-link" style={{ fontSize: '14px' }}>← На главную</Link>
 
         <h1 className="static-page-title">{page?.title ?? 'О проекте'}</h1>
 
