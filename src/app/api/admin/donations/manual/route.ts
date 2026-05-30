@@ -4,6 +4,7 @@ import { requireAdmin } from '@/lib/admin/requireAdmin';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
 import { awardPoints } from '@/lib/points/awardPoints';
 import { uuidSchema } from '@/lib/utils/zod';
+import { logAdminAction } from '@/lib/admin/auditLog';
 
 type AnyClient = ReturnType<typeof import('@/lib/supabase/server')['createServerSupabaseClient']> extends Promise<infer T> ? T : never;
 
@@ -24,6 +25,7 @@ const manualSchema = z.object({
 export async function POST(request: Request) {
   const ctx = await requireAdmin(['admin']);
   if (ctx instanceof NextResponse) return ctx;
+  const actorId = ctx.userId;
 
   let body: unknown;
   try {
@@ -131,6 +133,15 @@ export async function POST(request: Request) {
     is_anonymous,
     amount_kopecks,
     points: pointsAwarded > 0 ? pointsAwarded : null,
+  });
+
+  await logAdminAction(actorId, 'award_points_manual', 'donation', donationId, {
+    source,
+    amount_kopecks,
+    points_awarded: pointsAwarded,
+    user_id: userId,
+    donor_email: donor_email ?? null,
+    is_anonymous,
   });
 
   return NextResponse.json(

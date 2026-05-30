@@ -253,6 +253,83 @@ Tailwind-утилиты (размеры, отступы, flex) в компоне
 
 `components.css` и `responsive.css` попадают в **один** чанк — их порядок каскада не нарушается, адаптивные правила для не-map классов можно оставлять в `responsive.css`.
 
+---
+
+## Безопасность: timing-safe сравнение HMAC и секретов
+
+`crypto.timingSafeEqual()` используется везде, где сравниваются секреты или HMAC-хэши:
+- `src/lib/payments/ymoney.ts` — `verifyNotification()`: сравнение HMAC-SHA256 подписи ЮMoney
+- `src/app/api/cron/subscriptions/route.ts` — `CRON_SECRET` bearer token
+- `src/app/api/track-view/route.ts` — `INTERNAL_CALL_SECRET`
+
+**Причина:** обычное `===` уязвимо к timing-атаке — время ответа зависит от позиции первого несовпадающего байта, что позволяет восстановить секрет побайтово. `timingSafeEqual` гарантирует константное время независимо от содержимого.
+
+## Безопасность: `settings` — секреты скрыты от публичного SELECT
+
+Политика `settings_select_public` переписана: `USING (key NOT IN ('ymoney_notification_secret', 'ymoney_wallet'))`.
+
+**Причина:** предыдущая политика `USING (true)` позволяла любому авторизованному пользователю прочитать webhook-секрет ЮMoney через `supabase.from('settings').select('*')`. Зная секрет, можно форсировать webhook и создавать фиктивные подтверждённые донаты с начислением баллов.
+
+`ymoney_wallet` также скрыт — публичный номер кошелька облегчает фишинговые схемы. Admin-политика (`settings_all_admin`) по-прежнему даёт полный доступ.
+
+Сам webhook читает секрет только из `process.env.YMONEY_NOTIFICATION_SECRET`, не из БД — это правильный паттерн.
+
+## Безопасность: rate limiting — in-memory per-instance
+
+Rate limiter реализован в `src/lib/rateLimit.ts` на базе in-memory `Map` (sliding window).
+
+**Причина:** in-memory лимитер не требует Redis/KV и хорошо работает против одиночного злоупотребления в рамках одного serverless-инстанса Vercel. Ограничение: при горизонтальном масштабировании (несколько инстансов) лимит применяется per-instance, не глобально. Для глобального лимита потребуется Vercel KV или Upstash Redis.
+
+Текущие лимиты: `donations/initiate` — 10/min, `partner-applications` — 3/10min, `material-applications` — 5/min, `volunteer-applications` — 5/min.
+
+## Безопасность: CSP с `unsafe-inline` для публичного сайта
+
+Content-Security-Policy в `next.config.ts` содержит `script-src 'self' 'unsafe-inline'` и `style-src 'self' 'unsafe-inline'`.
+
+**Причина:** Next.js App Router инжектирует inline-скрипты для гидрации (`__NEXT_DATA__`, RSC payload). Убрать `unsafe-inline` для скриптов можно только через nonce-based CSP с `generateNonces()` — это нетривиальное изменение с риском поломки ISR/статических страниц. Inline стили используются по всей кастомной дизайн-системе. `frame-ancestors 'none'` (строже, чем `X-Frame-Options`) предотвращает clickjacking.
+
+**Upgrade path:** перейти на nonce-based CSP через Next.js `nonce` option в middleware.
+
+## Безопасность: `profiles.role` — иммутабельность через RLS WITH CHECK
+
+Политика `profiles_update_own` переписана с добавлением `WITH CHECK (role = (SELECT role FROM profiles WHERE id = auth.uid()))`.
+
+**Причина:** исходная политика `FOR UPDATE USING (auth.uid() = id)` без `WITH CHECK` позволяла прямой PATCH через Supabase client с `{ role: 'admin' }` — API-слой проверку не требовался. Новый `WITH CHECK` читает текущую роль из БД и отклоняет любое изменение, даже через прямой API-вызов.
+
+## Безопасность: запись на волонтёрский заезд — атомарная RPC
+
+`POST /api/volunteer-applications` использует `rpc('apply_volunteer_atomic')` вместо последовательных CHECK + INSERT.
+
+**Причина:** без `SELECT ... FOR UPDATE` на строке заезда два параллельных запроса могут оба пройти проверку свободных мест и превысить `max_volunteers`. Функция `apply_volunteer_atomic()` (SECURITY DEFINER) блокирует строку заезда на время транзакции, гарантируя атомарность. UNIQUE constraint `(user_id, camp_id)` ловится как `unique_violation` внутри функции.
+
+## Безопасность: admin audit log
+
+Таблица `admin_audit_log` фиксирует все admin-действия, влияющие на деньги или права.
+
+**Причина:** без журнала невозможно расследовать злоупотребления (например, несанкционированное начисление баллов или изменение ролей). INSERT ограничен `service_role` (только серверный код), SELECT — только `role = 'admin'`. Ошибка записи в лог намеренно не прерывает основную операцию — `catch` в `logAdminAction()` только логирует в консоль.
+
+**Покрыты действия:** подтверждение/удаление доната, смена роли пользователя, ручное добавление доната, начисление баллов за материалы.
+
+## Безопасность: MIME-валидация загружаемых файлов по magic bytes
+
+`POST /api/admin/map/image` проверяет первые байты файла (PNG: `89 50 4E 47`, JPEG: `FF D8`, WebP: bytes 8–12 == `WEBP`), а не `file.type` из клиентского запроса.
+
+**Причина:** `file.type` устанавливается браузером и легко подменяется. Проверка magic bytes на сервере исключает загрузку полиглот-файлов (SVG с JavaScript, HTML с `<script>` под видом PNG).
+
+## Безопасность: `INTERNAL_CALL_SECRET` для `/api/track-view`
+
+Эндпоинт принимает только запросы с заголовком `X-Internal-Secret`, совпадающим с env `INTERNAL_CALL_SECRET` (timing-safe сравнение).
+
+**Причина:** без защиты любой внешний клиент мог POST на `/api/track-view` с произвольным `object_id`, искусственно раздувая счётчики просмотров. Секрет позволяет middleware делать fire-and-forget запросы, блокируя прямые внешние вызовы. При отсутствии переменной эндпоинт работает в открытом режиме (backwards-compatible).
+
+**Дополнительно исправлено:** middleware вызывал несуществующий путь `/api/objects/{slug}/view` (SPEC-endpoint без реализации). Исправлен на `/api/track-view`.
+
+## Безопасность: PDF_SERVICE_ALLOWED_HOSTS против SSRF
+
+`POST /api/profile/certificate` валидирует hostname из `PDF_SERVICE_URL` против списка `PDF_SERVICE_ALLOWED_HOSTS` (comma-separated env).
+
+**Причина:** без проверки скомпрометированная env-переменная `PDF_SERVICE_URL` превращает эндпоинт в прокси к внутренним сервисам (SSRF). Если `PDF_SERVICE_ALLOWED_HOSTS` не задан — проверка пропускается (для локальной разработки без VPS).
+
 ## Дизайн: Тёплая тема shadcn в admin.css
 
 13 HSL-переменных shadcn сдвинуты с cold neutral-gray на тёплые paper/olive:

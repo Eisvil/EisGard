@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
 import { awardPoints } from '@/lib/points/awardPoints';
 
@@ -25,7 +26,13 @@ export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  const expected = `Bearer ${cronSecret ?? ''}`;
+  const isValid = cronSecret &&
+    authHeader !== null &&
+    expected.length === authHeader.length &&
+    timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(authHeader, 'utf8'));
+
+  if (!isValid) {
     return NextResponse.json(
       { error: { code: 'UNAUTHORIZED', message: 'Неверный секрет' } },
       { status: 401 }

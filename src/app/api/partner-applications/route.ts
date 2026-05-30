@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { uuidSchema } from '@/lib/utils/zod';
+import { rateLimit } from '@/lib/rateLimit';
 
 const schema = z.object({
   org_name:      z.string().min(2).max(200),
@@ -15,6 +16,10 @@ const schema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // Публичный эндпоинт — строгий лимит против спама заявками
+  const limited = rateLimit(request, { limit: 3, windowMs: 600_000 });
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();

@@ -3,6 +3,11 @@ import { createServiceSupabaseClient } from '@/lib/supabase/server';
 import { verifyNotification } from '@/lib/payments/ymoney';
 import { awardPoints } from '@/lib/points/awardPoints';
 
+// Fail fast at module load time if secret is not configured
+if (!process.env.YMONEY_NOTIFICATION_SECRET) {
+  throw new Error('[ymoney webhook] YMONEY_NOTIFICATION_SECRET env var is required');
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
 

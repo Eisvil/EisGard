@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 import { awardPoints } from '@/lib/points/awardPoints';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
+import { logAdminAction } from '@/lib/admin/auditLog';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -93,6 +94,12 @@ export async function PATCH(
     });
   }
 
+  await logAdminAction(ctx.userId, 'confirm_donation', 'donation', id, {
+    amount_kopecks: donation.amount_kopecks,
+    points_awarded: ptsAwarded,
+    user_id: donation.user_id,
+  });
+
   return NextResponse.json({ data: { confirmed: true, points_awarded: ptsAwarded } });
 }
 
@@ -102,7 +109,7 @@ export async function DELETE(
 ) {
   const ctx = await requireAdmin(['admin']);
   if (ctx instanceof NextResponse) return ctx;
-  const { supabase } = ctx as { supabase: AnyClient };
+  const { supabase, userId: actorId } = ctx as { supabase: AnyClient; userId: string };
 
   const { id } = await params;
 
@@ -121,6 +128,12 @@ export async function DELETE(
   }
 
   await supabase.from('donations').delete().eq('id', id);
+
+  await logAdminAction(actorId, 'delete_donation', 'donation', id, {
+    was_confirmed: donation.status === 'confirmed',
+    points_rolled_back: donation.status === 'confirmed' ? donation.points_awarded : 0,
+    user_id: donation.user_id,
+  });
 
   return NextResponse.json({ data: { deleted: true } });
 }

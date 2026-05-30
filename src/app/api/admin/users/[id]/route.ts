@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
+import { logAdminAction } from '@/lib/admin/auditLog';
 
 type AnyClient = ReturnType<typeof import('@/lib/supabase/server')['createServerSupabaseClient']> extends Promise<infer T> ? T : never;
 
@@ -75,6 +76,11 @@ export async function PATCH(
       { status: 500 },
     );
   }
+
+  await logAdminAction(userId, 'set_role', 'profile', id, {
+    new_role: parsed.data.role,
+    previous_role: target.role,
+  });
 
   return NextResponse.json({ data: { updated: true } });
 }

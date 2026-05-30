@@ -25,6 +25,26 @@ export async function POST() {
     );
   }
 
+  // SSRF protection: only allow requests to explicitly whitelisted hostnames
+  const allowedHosts = (process.env.PDF_SERVICE_ALLOWED_HOSTS ?? '').split(',').map(h => h.trim()).filter(Boolean);
+  if (allowedHosts.length > 0) {
+    try {
+      const { hostname } = new URL(pdfServiceUrl);
+      if (!allowedHosts.includes(hostname)) {
+        console.error('[certificate] PDF_SERVICE_URL hostname not in allowlist:', hostname);
+        return NextResponse.json(
+          { error: { code: 'PDF_SERVICE_UNAVAILABLE', message: 'Сервис сертификатов временно недоступен' } },
+          { status: 503 },
+        );
+      }
+    } catch {
+      return NextResponse.json(
+        { error: { code: 'PDF_SERVICE_UNAVAILABLE', message: 'Сервис сертификатов временно недоступен' } },
+        { status: 503 },
+      );
+    }
+  }
+
   const { data: profile } = (await supabase
     .from('profiles')
     .select('full_name, points, titles(name)')

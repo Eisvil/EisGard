@@ -447,6 +447,36 @@ _(пусто)_
 - [x] `src/styles/responsive.css` — на `≤760px` блок `.objects-grid-section` выходит за padding страницы (отрицательные margin), `.objects-grid-track` переключается с `display:grid` на `flex / overflow-x:auto / scroll-snap-type:x mandatory`, карточки `.object-grid-card` фиксируются на `min(63vw, 220px)` с `scroll-snap-align:start`; правый fade-gradient подсказывает о прокрутке
 - Desktop-сетка (`grid auto-fill minmax(180px,1fr)`) не тронута
 
+### Полный security-аудит и исправления (2026-05-30)
+
+**КРИТИЧНО:**
+- [x] `src/lib/payments/ymoney.ts` — timing-safe HMAC сравнение (`crypto.timingSafeEqual` вместо `===`)
+- [x] `src/app/api/cron/subscriptions/route.ts` — timing-safe сравнение `CRON_SECRET`
+- [x] `src/app/api/payments/ymoney/webhook/route.ts` — startup-assertion на `YMONEY_NOTIFICATION_SECRET`
+- [x] `supabase/migrations/20260530000002_restrict_secret_settings.sql` — `ymoney_notification_secret` и `ymoney_wallet` скрыты от публичного SELECT
+- [x] `src/lib/rateLimit.ts` — IP-based sliding window rate limiter
+- [x] Rate limiting применён: `donations/initiate` (10/min), `partner-applications` (3/10min), `material-applications` (5/min), `volunteer-applications` (5/min)
+
+**ВЫСОКИЙ:**
+- [x] `next.config.ts` — HTTP security headers: X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS, Permissions-Policy, CSP
+- [x] `src/app/api/admin/map/image/route.ts` — валидация magic bytes (PNG/JPEG/WebP), `contentType` из bytes, не из `file.type`
+- [x] `supabase/migrations/20260530000003_profiles_restrict_update_columns.sql` — `WITH CHECK` блокирует самоэскалацию роли через RLS
+- [x] `supabase/migrations/20260530000004_apply_volunteer_atomic.sql` — функция `apply_volunteer_atomic()` исключает race condition при записи на заезд
+- [x] `src/app/api/volunteer-applications/route.ts` — переведён на `rpc('apply_volunteer_atomic')`
+- [x] `supabase/migrations/20260530000005_material_apps_points_cap.sql` — `CHECK (points_awarded <= 100000)` на material_applications и volunteer_applications
+- [x] `src/app/api/admin/material-applications/[id]/route.ts` — Zod `.max(100_000)` на `points_awarded`
+- [x] `supabase/migrations/20260530000006_admin_audit_log.sql` — таблица `admin_audit_log` (INSERT — service_role, SELECT — admin)
+- [x] `src/lib/admin/auditLog.ts` — утилита `logAdminAction()`; вызывается в: `donations/[id]` (confirm/delete), `users/[id]` (set_role), `donations/manual`, `material-applications/[id]` (received)
+
+**СРЕДНИЙ:**
+- [x] `src/app/api/profile/certificate/route.ts` — SSRF-защита: проверка hostname против `PDF_SERVICE_ALLOWED_HOSTS`
+- [x] `supabase/migrations/20260530000007_fix_comment_photos_ban.sql` — Storage RLS `comment-photos` проверяет бан-статус пользователя
+- [x] `src/app/api/track-view/route.ts` — rate limiting (20/min), поддержка `X-Internal-Secret`, timing-safe сравнение
+- [x] `src/middleware.ts` — исправлен URL (был `/api/objects/${slug}/view` — несуществующий путь); добавлен `X-Internal-Secret` в fire-and-forget
+- [x] `supabase/migrations/20260530000008_comments_explicit_no_delete.sql` — явная `USING (false)` политика DELETE + COMMENT ON TABLE
+
+**ENV-переменные (добавить в Vercel):** `INTERNAL_CALL_SECRET`, `PDF_SERVICE_ALLOWED_HOSTS`
+
 ---
 
 ## Следующее (по порядку из SPEC)

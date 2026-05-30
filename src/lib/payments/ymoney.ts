@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 // New ЮMoney signing (from 18 May 2026): HMAC-SHA256 of all params except 'sign',
 // sorted alphabetically by key, values RFC-3986 URL-encoded, joined as key=value&...
@@ -15,7 +15,12 @@ export function verifyNotification(params: Record<string, string>, secret: strin
     .join('&');
 
   const computed = createHmac('sha256', secret).update(str).digest('hex');
-  return computed === sign;
+
+  // Timing-safe comparison to prevent timing attacks
+  const computedBuf = Buffer.from(computed, 'hex');
+  const signBuf = Buffer.from(sign, 'hex');
+  if (computedBuf.length !== signBuf.length) return false;
+  return timingSafeEqual(computedBuf, signBuf);
 }
 
 interface QuickpayParams {

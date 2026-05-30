@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { uuidSchema } from '@/lib/utils/zod';
+import { rateLimit } from '@/lib/rateLimit';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyClient = any;
 
 const schema = z.object({
   camp_id: uuidSchema,
@@ -9,17 +13,24 @@ const schema = z.object({
   comment: z.string().max(1000).optional(),
 });
 
-type CampRow = {
-  id: string;
-  is_open: boolean;
-  max_volunteers: number;
+const ERROR_STATUS: Record<string, number> = {
+  NOT_FOUND: 404,
+  CAMP_CLOSED: 409,
+  CAMP_FULL: 409,
+  ALREADY_APPLIED: 409,
 };
 
-type AppRow = {
-  camp_id: string;
+const ERROR_MESSAGE: Record<string, string> = {
+  NOT_FOUND: 'Заезд не найден',
+  CAMP_CLOSED: 'Набор на этот заезд закрыт',
+  CAMP_FULL: 'Все места на этот заезд заняты',
+  ALREADY_APPLIED: 'Вы уже подали заявку на этот заезд',
 };
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimit(request, { limit: 5, windowMs: 60_000 });
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();
@@ -40,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   const { camp_id, skill_ids, comment } = parsed.data;
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = (await createServerSupabaseClient()) as AnyClient;
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -50,70 +61,40 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Verify camp exists and is open
-  const { data: rawCamp } = await supabase
-    .from('volunteer_camps')
-    .select('id, is_open, max_volunteers')
-    .eq('id', camp_id)
-    .maybeSingle();
+  // Atomically check availability and insert — prevents race condition overbooking
+  const { data: rpcRows, error: rpcError } = await supabase.rpc('apply_volunteer_atomic', {
+    p_user_id: user.id,
+    p_camp_id: camp_id,
+    p_comment: comment ?? null,
+  }) as { data: { success: boolean; error_code: string | null }[] | null; error: unknown };
 
-  const camp = rawCamp as CampRow | null;
-  if (!camp) {
-    return NextResponse.json(
-      { error: { code: 'NOT_FOUND', message: 'Заезд не найден' } },
-      { status: 404 }
-    );
-  }
-
-  if (!camp.is_open) {
-    return NextResponse.json(
-      { error: { code: 'CAMP_CLOSED', message: 'Набор на этот заезд закрыт' } },
-      { status: 409 }
-    );
-  }
-
-  // Count current active applications
-  const { data: rawApps } = await supabase
-    .from('volunteer_applications')
-    .select('camp_id')
-    .eq('camp_id', camp_id)
-    .in('status', ['pending', 'approved']);
-
-  const taken = ((rawApps ?? []) as AppRow[]).length;
-  if (taken >= camp.max_volunteers) {
-    return NextResponse.json(
-      { error: { code: 'CAMP_FULL', message: 'Все места на этот заезд заняты' } },
-      { status: 409 }
-    );
-  }
-
-  // Insert application
-  const { data: rawApp, error: insertError } = await supabase
-    .from('volunteer_applications')
-    .insert({
-      user_id: user.id,
-      camp_id,
-      comment: comment ?? null,
-      status: 'pending',
-    })
-    .select('id, status')
-    .single();
-
-  if (insertError) {
-    // UNIQUE violation: (user_id, camp_id)
-    if (insertError.code === '23505') {
-      return NextResponse.json(
-        { error: { code: 'ALREADY_APPLIED', message: 'Вы уже подали заявку на этот заезд' } },
-        { status: 409 }
-      );
-    }
+  if (rpcError || !rpcRows) {
     return NextResponse.json(
       { error: { code: 'DB_ERROR', message: 'Не удалось создать заявку' } },
       { status: 500 }
     );
   }
 
-  const app = rawApp as { id: string; status: string };
+  const result = rpcRows[0];
+  if (!result?.success) {
+    const code = result?.error_code ?? 'DB_ERROR';
+    return NextResponse.json(
+      { error: { code, message: ERROR_MESSAGE[code] ?? 'Ошибка создания заявки' } },
+      { status: ERROR_STATUS[code] ?? 500 }
+    );
+  }
+
+  // Fetch the newly created application id
+  const { data: rawApp } = await supabase
+    .from('volunteer_applications')
+    .select('id, status')
+    .eq('user_id', user.id)
+    .eq('camp_id', camp_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  const app = rawApp as { id: string; status: string } | null;
 
   // Upsert selected skills into user_skills
   if (skill_ids.length > 0) {
@@ -123,5 +104,8 @@ export async function POST(request: NextRequest) {
       .upsert(skillRows, { onConflict: 'user_id,skill_id', ignoreDuplicates: true });
   }
 
-  return NextResponse.json({ data: { id: app.id, status: app.status } }, { status: 201 });
+  return NextResponse.json(
+    { data: { id: app?.id ?? null, status: app?.status ?? 'pending' } },
+    { status: 201 }
+  );
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 import { awardPoints } from '@/lib/points/awardPoints';
+import { logAdminAction } from '@/lib/admin/auditLog';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -9,7 +10,7 @@ type AnyClient = any;
 const patchSchema = z.object({
   status: z.enum(['contacted', 'not_contacted', 'received', 'cancelled']),
   actual_qty: z.number().positive().optional(),
-  points_awarded: z.number().int().min(0).optional(),
+  points_awarded: z.number().int().min(0).max(100_000).optional(),
   admin_note: z.string().max(500).optional(),
 });
 
@@ -19,7 +20,7 @@ export async function PATCH(
 ) {
   const ctx = await requireAdmin(['admin', 'moderator']);
   if (ctx instanceof NextResponse) return ctx;
-  const { supabase } = ctx as { supabase: AnyClient };
+  const { supabase, userId: actorId } = ctx as { supabase: AnyClient; userId: string };
 
   const { id } = await params;
 
@@ -95,6 +96,12 @@ export async function PATCH(
   if (app.user_id && pts > 0) {
     await awardPoints(app.user_id, pts);
   }
+
+  await logAdminAction(actorId, 'award_points_material', 'material_application', id, {
+    actual_qty,
+    points_awarded: pts,
+    user_id: app.user_id,
+  });
 
   return NextResponse.json({ data: { updated: true, points_awarded: pts } });
 }

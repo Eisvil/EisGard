@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { buildQuickpayUrl } from '@/lib/payments/ymoney';
 import { uuidSchema } from '@/lib/utils/zod';
+import { rateLimit } from '@/lib/rateLimit';
 
 const schema = z.object({
   object_id: uuidSchema.nullable().optional(),
@@ -17,6 +18,9 @@ const schema = z.object({
 type AnyClient = any;
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimit(request, { limit: 10, windowMs: 60_000 });
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { uuidSchema } from '@/lib/utils/zod';
+import { rateLimit } from '@/lib/rateLimit';
 
 const schema = z.object({
   material_id: uuidSchema,
@@ -20,6 +21,9 @@ type MaterialRow = {
 };
 
 export async function POST(request: NextRequest) {
+  const limited = rateLimit(request, { limit: 5, windowMs: 60_000 });
+  if (limited) return limited;
+
   let body: unknown;
   try {
     body = await request.json();

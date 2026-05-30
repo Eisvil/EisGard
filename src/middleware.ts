@@ -60,6 +60,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // Fire-and-forget view counter for /objects/[slug]
+  // Note: ObjectViewTracker client component also handles this on mount.
+  // Middleware path covers SSG/ISR cached page loads where client component may not fire.
   const match = pathname.match(/^\/objects\/([^/]+)$/);
   if (match) {
     const ip =
@@ -70,13 +72,24 @@ export async function middleware(request: NextRequest) {
     const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
     const ipHash = Array.from(new Uint8Array(hashBuffer))
       .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
-    fetch(`${siteUrl}/api/objects/${match[1]}/view`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ip_hash: ipHash }),
-    }).catch(() => {});
+      .join('')
+      .slice(0, 32);
+
+    // Re-fetch the object_id by slug via the objects API — not inline here,
+    // so we skip the middleware view ping (ObjectViewTracker handles it client-side).
+    // The middleware only pings if INTERNAL_CALL_SECRET is set (secure mode).
+    const internalSecret = process.env.INTERNAL_CALL_SECRET;
+    if (internalSecret) {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
+      fetch(`${siteUrl}/api/track-view`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Secret': internalSecret,
+        },
+        body: JSON.stringify({ object_id: match[1], ip_hash: ipHash }),
+      }).catch(() => {});
+    }
   }
 
   return supabaseResponse;
