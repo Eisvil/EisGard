@@ -271,3 +271,114 @@
 .working {
   background: #806741;
 }
+
+/* ── Responsive overrides — co-located with base rules to guarantee
+      correct cascade in the Next.js production webpack CSS bundle.
+      webpack splits map.css into a separate <link> loaded after the
+      main chunk (which contains responsive.css). Base rules without
+      a media query would otherwise override mobile overrides. ── */
+
+@media (max-width: 1399px) {
+  .settlement-map {
+    order: -1;
+    margin: 0 calc(-1 * var(--page-gutter));
+  }
+
+  .map-canvas {
+    min-height: min(72vw, 690px);
+  }
+
+  .player-hud {
+    min-width: min(666px, calc(100% - 42px));
+    top: 20px;
+  }
+
+  .zoom {
+    top: 106px;
+    right: var(--page-gutter);
+  }
+}
+
+@media (max-width: 760px) {
+  .map-canvas {
+    min-height: min(112vw, 510px);
+  }
+
+  .player-hud {
+    height: 60px;
+    min-width: calc(100% - 22px);
+    top: 10px;
+    gap: 8px;
+    padding: 5px 9px 5px 6px;
+  }
+
+  .player-avatar {
+    width: 48px;
+    height: 48px;
+  }
+
+  .player-identity {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+    padding-right: 7px;
+  }
+
+  .player-identity strong { font-size: 13px; }
+  .player-identity small  { font-size: 11px; }
+
+  .player-resources {
+    gap: 7px;
+    font-size: 13px;
+  }
+
+  .player-resources span:nth-child(n+3) { display: none; }
+  .player-resources small { display: none; }
+
+  .zoom {
+    top: 82px;
+    right: 12px;
+    width: 40px;
+  }
+
+  .zoom button {
+    height: 39px;
+    font-size: 25px;
+  }
+
+  .hotspot {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .hotspot-round {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hotspot-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .hotspot-label {
+    min-height: 34px;
+    padding: 0 11px;
+    font-size: 13px;
+  }
+
+  .legend {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 9px 16px;
+    font-size: 11px;
+    bottom: 14px;
+  }
+
+  .legend li:nth-child(3),
+  .legend li:nth-child(4) {
+    display: flex;
+  }
+}
