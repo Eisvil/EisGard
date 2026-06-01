@@ -102,13 +102,17 @@ export default function QuestOverlay({ npcId, npcName, npcPortraitUrl, userId, o
         <div className="npc-dialog-wrap">
           <div className="npc-dialog" role="dialog" aria-label="Нет заданий">
             <div className="npc-portrait-wrap">
-              <img
-                src={npcPortraitUrl || '/npc/elder.png'}
-                alt={npcName}
-                className="npc-portrait"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-              />
-              <div className="npc-portrait-fallback"><User size={40} strokeWidth={1.5} /></div>
+              {npcPortraitUrl && (
+                <img
+                  src={npcPortraitUrl}
+                  alt={npcName}
+                  className="npc-portrait"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              )}
+              <div className="npc-portrait-fallback" style={npcPortraitUrl ? undefined : { display: 'flex' }}>
+                <User size={40} strokeWidth={1.5} />
+              </div>
               <span className="npc-name">{npcName}</span>
             </div>
             <div className="npc-speech">

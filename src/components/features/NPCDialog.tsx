@@ -43,16 +43,18 @@ type NPCDialogProps = TutorialProps | QuestProps;
 function NpcPortrait({ name, portraitUrl }: { name: string; portraitUrl: string }) {
   return (
     <div className="npc-portrait-wrap">
-      <img
-        src={portraitUrl || '/npc/elder.png'}
-        alt={name}
-        className="npc-portrait"
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.display = 'none';
-          (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
-        }}
-      />
-      <div className="npc-portrait-fallback">
+      {portraitUrl && (
+        <img
+          src={portraitUrl}
+          alt={name}
+          className="npc-portrait"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = 'none';
+            (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+          }}
+        />
+      )}
+      <div className="npc-portrait-fallback" style={portraitUrl ? undefined : { display: 'flex' }}>
         <User size={40} strokeWidth={1.5} />
       </div>
       <span className="npc-name">{name}</span>

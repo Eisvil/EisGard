@@ -13,7 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -326,6 +326,7 @@ export default function NpcManager({ initialNpcs }: Props) {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Редактировать персонажа' : 'Новый персонаж'}</DialogTitle>
+            <DialogDescription>Имя, портрет и начальная позиция. Для размещения на карте используйте раздел Карта.</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
