@@ -483,6 +483,16 @@ _(пусто)_
 
 ---
 
+### NPC-туториал «Ведун» (2026-06-01)
+- [x] `src/lib/tutorial/steps.ts` — 8 шагов туториала с CSS-селекторами и текстами NPC
+- [x] `src/components/features/NPCDialog.tsx` — диалоговое окно NPC: портрет (fallback иконка), речь, точки прогресса, кнопки «Начать/Далее/Назад/Пропустить», CTA на финале
+- [x] `src/components/features/TutorialOverlay.tsx` — spotlight-движок: `.tutorial-spotlight` через box-shadow, click-catcher, localStorage-персистентность, Escape-закрытие, resize/scroll ремер
+- [x] `src/styles/components.css` — `.npc-dialog-wrap`, `.npc-dialog`, `.tutorial-spotlight`, `.tutorial-click-catcher`, `.tutorial-replay-btn` + адаптив ≤760px
+- [x] `src/components/features/MapSection.tsx` — `<TutorialOverlay />` интегрирован; кнопка «?» в player-hud для повтора туториала
+- [x] Протестировано Playwright: desktop 1440px + mobile 390px; spotlight на `.feature`, `.player-hud`, `.support`, `.right-rail` работает; localStorage-персистентность, Escape, replay — всё проверено
+- **Примечание:** портрет `/public/npc/elder.png` — заглушка (показывается fallback иконка User); подставить готовый арт без изменения кода
+- **Примечание:** NPC-компонент спроектирован с `mode: 'tutorial' | 'quest'` для будущей системы квестов
+
 ## Следующее (по порядку из SPEC)
 
 _(все основные US реализованы)_
