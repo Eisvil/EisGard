@@ -299,7 +299,8 @@ export async function adminCreateNpc(
     .select()
     .single() as { data: NpcRow | null; error: unknown };
 
-  if (error || !npc) return { error: 'Не удалось создать персонажа' };
+  if (error) return { error: `Не удалось создать персонажа: ${(error as { message?: string })?.message ?? String(error)}` };
+  if (!npc) return { error: 'Не удалось создать персонажа' };
   return { npc };
 }
 
@@ -324,7 +325,8 @@ export async function adminUpdateNpc(
     .select()
     .single() as { data: NpcRow | null; error: unknown };
 
-  if (error || !npc) return { error: 'Не удалось обновить персонажа' };
+  if (error) return { error: `Не удалось обновить персонажа: ${(error as { message?: string })?.message ?? String(error)}` };
+  if (!npc) return { error: 'Не удалось обновить персонажа' };
   return { npc };
 }
 
@@ -334,6 +336,6 @@ export async function adminDeleteNpc(id: string): Promise<{ error?: string }> {
   if (!parsed.success) return { error: 'Некорректный ID' };
   const supabase = (await createServiceSupabaseClient()) as AnyClient;
   const { error } = await supabase.from('npcs').delete().eq('id', id);
-  if (error) return { error: 'Не удалось удалить персонажа' };
+  if (error) return { error: `Не удалось удалить персонажа: ${(error as { message?: string })?.message ?? String(error)}` };
   return {};
 }

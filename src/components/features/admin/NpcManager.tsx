@@ -53,7 +53,6 @@ export default function NpcManager({ initialNpcs }: Props) {
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const mapPickerRef = useRef<HTMLDivElement>(null);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -99,15 +98,6 @@ export default function NpcManager({ initialNpcs }: Props) {
     } finally {
       setUploading(false);
     }
-  }
-
-  function handleMapClick(e: React.MouseEvent<HTMLDivElement>) {
-    const el = mapPickerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
-    const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
-    setForm(f => ({ ...f, position_x: Math.max(0, Math.min(100, x)), position_y: Math.max(0, Math.min(100, y)) }));
   }
 
   async function handleSave() {
@@ -289,36 +279,12 @@ export default function NpcManager({ initialNpcs }: Props) {
               />
             </div>
 
-            {/* Map position picker */}
+            {/* Position — manual fallback, main placement via Map section */}
             <div className="space-y-2">
-              <Label>Позиция на карте</Label>
-              <p className="text-xs text-muted-foreground">Кликните на карте чтобы установить позицию, или введите вручную.</p>
-              <div
-                ref={mapPickerRef}
-                className="relative cursor-crosshair rounded-md overflow-hidden border border-border select-none"
-                style={{ maxWidth: 400, aspectRatio: '16/9' }}
-                onClick={handleMapClick}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/map/settlement.png" alt="Карта" className="w-full h-full object-cover" draggable={false} />
-                {/* Position marker */}
-                <div
-                  className="pointer-events-none absolute"
-                  style={{
-                    left: `${form.position_x}%`,
-                    top: `${form.position_y}%`,
-                    transform: 'translate(-50%, -100%)',
-                  }}
-                >
-                  <div style={{
-                    width: 14, height: 20,
-                    background: '#f5c842',
-                    borderRadius: '50% 50% 50% 0',
-                    transform: 'rotate(-45deg)',
-                    border: '2px solid #3a2e00',
-                  }} />
-                </div>
-              </div>
+              <Label>Начальная позиция</Label>
+              <p className="text-xs text-muted-foreground">
+                Для точного размещения используйте раздел <strong>Карта</strong> — там NPC можно перетащить на нужное место.
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label htmlFor="pos-x" className="text-xs">X (%)</Label>
