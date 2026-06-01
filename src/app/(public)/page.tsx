@@ -2,7 +2,7 @@ import { createStaticSupabaseClient } from '@/lib/supabase/static';
 import { Header } from '@/components/layouts/Header';
 import { Footer } from '@/components/layouts/Footer';
 import { MapSection } from '@/components/features/MapSection';
-import type { ChronicleEvent, NewsItem, SiteStats, NpcSettings } from '@/components/features/MapSection';
+import type { ChronicleEvent, NewsItem, SiteStats, NpcRow } from '@/components/features/MapSection';
 
 export const revalidate = 300;
 
@@ -20,7 +20,8 @@ export default async function HomePage() {
     { data: donationsRaw },
     { data: volunteerDaysData },
     { count: objectsDone },
-    { data: npcSettingsRaw },
+    { data: npcsRaw },
+    { data: questsWithNpcRaw },
   ] = await Promise.all([
     supabase
       .from('objects')
@@ -42,7 +43,8 @@ export default async function HomePage() {
     // RPC обходит RLS (anon-клиент не видит volunteer_applications напрямую)
     supabase.rpc('get_volunteer_days_total'),
     supabase.from('objects').select('id', { count: 'exact', head: true }).in('status', ['done', 'working']),
-    supabase.from('settings').select('key, value').in('key', ['npc_name','npc_position_x','npc_position_y','npc_portrait_url']),
+    supabase.from('npcs').select('id, name, portrait_url, position_x, position_y').eq('is_active', true).order('sort_order'),
+    supabase.from('quests').select('npc_id').eq('is_active', true),
   ]);
 
   const siteStats: SiteStats = {
@@ -71,16 +73,14 @@ export default async function HomePage() {
   });
 
   const news: NewsItem[] = (newsRaw ?? []) as NewsItem[];
-
-  const npcMap: Record<string, unknown> = Object.fromEntries(
-    (npcSettingsRaw ?? []).map((r: { key: string; value: unknown }) => [r.key, r.value])
-  );
-  const npcSettings: NpcSettings | undefined = npcMap.npc_position_x != null ? {
-    name:         String(npcMap.npc_name ?? 'Ведун'),
-    position_x:   Number(npcMap.npc_position_x ?? 50),
-    position_y:   Number(npcMap.npc_position_y ?? 50),
-    portrait_url: String(npcMap.npc_portrait_url ?? ''),
-  } : undefined;
+  const npcs: NpcRow[] = (npcsRaw ?? []) as NpcRow[];
+  const npcIdsWithQuests: string[] = [
+    ...new Set(
+      ((questsWithNpcRaw ?? []) as { npc_id: string | null }[])
+        .map(q => q.npc_id)
+        .filter((id): id is string => id !== null)
+    ),
+  ];
 
   return (
     <>
@@ -92,7 +92,8 @@ export default async function HomePage() {
           initialChronicle={chronicle}
           newsItems={news}
           siteStats={siteStats}
-          npcSettings={npcSettings}
+          npcs={npcs}
+          npcIdsWithQuests={npcIdsWithQuests}
         />
       </main>
       <Footer />

@@ -9,7 +9,6 @@ const ALLOWED_KEYS = [
   'points_per_ruble', 'points_per_day',
   'social_vk', 'social_telegram', 'social_youtube',
   'social_vk_icon', 'social_telegram_icon', 'social_youtube_icon',
-  'npc_name', 'npc_portrait_url', 'npc_position_x', 'npc_position_y',
 ] as const;
 
 const patchSchema = z.object({
@@ -21,10 +20,6 @@ const patchSchema = z.object({
   social_vk_icon: z.string().optional(),
   social_telegram_icon: z.string().optional(),
   social_youtube_icon: z.string().optional(),
-  npc_name: z.string().max(100).optional(),
-  npc_portrait_url: z.string().max(500).optional(),
-  npc_position_x: z.number().min(0).max(100).optional(),
-  npc_position_y: z.number().min(0).max(100).optional(),
 });
 
 export async function GET() {

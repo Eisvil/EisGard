@@ -51,11 +51,12 @@ export type UserProfile = {
   avatar_url?: string | null;
 };
 
-export type NpcSettings = {
+export type NpcRow = {
+  id: string;
   name: string;
+  portrait_url: string | null;
   position_x: number;
   position_y: number;
-  portrait_url: string;
 };
 
 export type SettlementObject = {
@@ -113,17 +114,18 @@ type MapSectionProps = {
   newsItems?: NewsItem[];
   siteStats?: SiteStats;
   userProfile?: UserProfile;
-  npcSettings?: NpcSettings;
+  npcs?: NpcRow[];
+  npcIdsWithQuests?: string[];
 };
 
-export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile: initialProfile, npcSettings }: MapSectionProps) {
+export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile: initialProfile, npcs = [], npcIdsWithQuests = [] }: MapSectionProps) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeZone, setActiveZone] = useState<string>(ALL_ZONES);
   const [mapScale, setMapScale] = useState(1);
   const [toastMsg, setToastMsg] = useState('');
   const [showSupportModal, setShowSupportModal] = useState(false);
-  const [showQuestOverlay, setShowQuestOverlay] = useState(false);
+  const [questOpenNpcId, setQuestOpenNpcId] = useState<string | null>(null);
   const [chronicles, setChronicles] = useState<ChronicleEvent[]>(initialChronicle);
   const [userProfile, setUserProfile] = useState<UserProfile | undefined>(initialProfile);
   const [userId, setUserId] = useState<string | undefined>(undefined);
@@ -449,30 +451,34 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
               );
             })}
 
-            {/* NPC Ведун */}
-            {npcSettings && (
+            {/* NPC персонажи */}
+            {npcs.map(npc => (
               <button
+                key={npc.id}
                 type="button"
                 className="npc-hotspot"
-                style={{ left: `${npcSettings.position_x}%`, top: `${npcSettings.position_y}%` }}
-                aria-label={npcSettings.name}
-                title={npcSettings.name}
-                onClick={() => setShowQuestOverlay(true)}
+                style={{ left: `${npc.position_x}%`, top: `${npc.position_y}%` }}
+                aria-label={npc.name}
+                title={npc.name}
+                onClick={() => setQuestOpenNpcId(npc.id)}
               >
-                {npcSettings.portrait_url ? (
+                {npc.portrait_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={npcSettings.portrait_url}
-                    alt={npcSettings.name}
+                    src={npc.portrait_url}
+                    alt={npc.name}
                     className="npc-hotspot-img"
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                   />
                 ) : (
                   <span className="npc-hotspot-fallback" aria-hidden="true">👤</span>
                 )}
-                <span className="npc-hotspot-label">{npcSettings.name}</span>
+                {npcIdsWithQuests.includes(npc.id) && (
+                  <span className="npc-hotspot-badge" aria-label="Доступны задания">!</span>
+                )}
+                <span className="npc-hotspot-label">{npc.name}</span>
               </button>
-            )}
+            ))}
           </div>
 
           {/* Zoom */}
@@ -706,14 +712,19 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
       <TutorialOverlay />
 
       {/* NPC Quest Overlay */}
-      {showQuestOverlay && npcSettings && (
-        <QuestOverlay
-          npcName={npcSettings.name}
-          npcPortraitUrl={npcSettings.portrait_url}
-          userId={userId}
-          onClose={() => setShowQuestOverlay(false)}
-        />
-      )}
+      {questOpenNpcId && (() => {
+        const activeNpc = npcs.find(n => n.id === questOpenNpcId);
+        if (!activeNpc) return null;
+        return (
+          <QuestOverlay
+            npcId={questOpenNpcId}
+            npcName={activeNpc.name}
+            npcPortraitUrl={activeNpc.portrait_url ?? ''}
+            userId={userId}
+            onClose={() => setQuestOpenNpcId(null)}
+          />
+        );
+      })()}
     </>
   );
 }

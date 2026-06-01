@@ -40,7 +40,7 @@ export default async function SettingsPage() {
     supabase
       .from('settings')
       .select('key, value')
-      .in('key', ['points_per_ruble', 'points_per_day', 'social_vk', 'social_telegram', 'social_youtube', 'social_vk_icon', 'social_telegram_icon', 'social_youtube_icon', 'npc_name', 'npc_portrait_url', 'npc_position_x', 'npc_position_y']) as Promise<{
+      .in('key', ['points_per_ruble', 'points_per_day', 'social_vk', 'social_telegram', 'social_youtube', 'social_vk_icon', 'social_telegram_icon', 'social_youtube_icon']) as Promise<{
       data: { key: string; value: unknown }[] | null;
     }>,
   ]);
@@ -59,10 +59,6 @@ export default async function SettingsPage() {
     social_vk_icon: settingsMap['social_vk_icon'] ?? '',
     social_telegram_icon: settingsMap['social_telegram_icon'] ?? '',
     social_youtube_icon: settingsMap['social_youtube_icon'] ?? '',
-    npc_name: settingsMap['npc_name'] ?? 'Ведун',
-    npc_portrait_url: settingsMap['npc_portrait_url'] ?? '',
-    npc_position_x: Number(settingsMap['npc_position_x'] ?? 50) || 50,
-    npc_position_y: Number(settingsMap['npc_position_y'] ?? 50) || 50,
   };
 
   return (
