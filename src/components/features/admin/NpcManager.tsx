@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ReactCrop, {
   centerCrop,
   makeAspectCrop,
@@ -107,8 +108,11 @@ export default function NpcManager({ initialNpcs }: Props) {
   const [cropImgSrc, setCropImgSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [mounted, setMounted] = useState(false);
   const cropImgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { setMounted(true); }, []);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -434,9 +438,9 @@ export default function NpcManager({ initialNpcs }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Crop modal — rendered outside Dialog to avoid z-index conflicts */}
-      {cropImgSrc && (
-        <div className="crop-modal-overlay" style={{ zIndex: 1300 }} onClick={handleCropCancel}>
+      {/* Crop modal — portal to document.body, чтобы быть поверх shadcn Dialog */}
+      {mounted && cropImgSrc && createPortal(
+        <div className="crop-modal-overlay" style={{ zIndex: 9999 }} onClick={handleCropCancel}>
           <div className="crop-modal" onClick={(e) => e.stopPropagation()}>
             <h3 className="crop-modal-title">Выбрать область портрета</h3>
             <p className="crop-modal-hint">Перетащите и измените размер квадрата</p>
@@ -480,7 +484,8 @@ export default function NpcManager({ initialNpcs }: Props) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete confirmation */}
