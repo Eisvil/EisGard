@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+const THREE_DAYS_SECONDS = 3 * 24 * 60 * 60; // 259200
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
@@ -18,7 +20,10 @@ export async function middleware(request: NextRequest) {
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              maxAge: THREE_DAYS_SECONDS,
+            })
           );
         },
       },
@@ -26,10 +31,12 @@ export async function middleware(request: NextRequest) {
   );
 
   const { pathname } = request.nextUrl;
+  let hasSession = false;
 
   // For protected routes — full server-side verification
   if (pathname.startsWith('/profile') || pathname.startsWith('/admin')) {
     const { data: { user } } = await supabase.auth.getUser();
+    hasSession = !!user;
 
     if (pathname.startsWith('/profile') && !user) {
       const url = request.nextUrl.clone();
@@ -56,7 +63,23 @@ export async function middleware(request: NextRequest) {
     }
   } else {
     // For public routes — local JWT validation only (no network round-trip)
-    await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
+    hasSession = !!session;
+  }
+
+  // Rolling session: on every authenticated request extend auth cookie maxAge to 3 days from now
+  if (hasSession) {
+    for (const { name, value } of request.cookies.getAll()) {
+      if (/^sb-.+-auth-token(\.\d+)?$/.test(name)) {
+        supabaseResponse.cookies.set(name, value, {
+          maxAge: THREE_DAYS_SECONDS,
+          path: '/',
+          httpOnly: false,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+        });
+      }
+    }
   }
 
   // Fire-and-forget view counter for /objects/[slug]

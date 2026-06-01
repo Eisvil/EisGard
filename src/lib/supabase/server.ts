@@ -4,6 +4,8 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/database';
 
+const THREE_DAYS_SECONDS = 3 * 24 * 60 * 60; // 259200
+
 export async function createServerSupabaseClient() {
   const cookieStore = await cookies();
 
@@ -18,7 +20,10 @@ export async function createServerSupabaseClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              cookieStore.set(name, value, {
+                ...options,
+                maxAge: THREE_DAYS_SECONDS,
+              })
             );
           } catch {
             // Server Component — cookie writes ignored (middleware handles session refresh)
