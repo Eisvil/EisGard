@@ -9,6 +9,7 @@ import { ZONES, ZONE_LABELS, type ZoneKey } from '@/lib/constants/zones';
 import { formatMoney as _formatMoney, getProgress as _getProgress } from '@/lib/utils/formatMoney';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { SupportModal } from '@/components/features/SupportModal';
+import TutorialOverlay, { replayTutorial } from '@/components/features/TutorialOverlay';
 
 export type ChronicleEvent = {
   id: string;
@@ -391,6 +392,15 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
               <strong>{userProfile?.name ?? 'Гость городища'}</strong>
               <small>{userProfile?.title ?? (userProfile ? 'Участник' : 'Войдите, чтобы участвовать')}</small>
             </div>
+            <button
+              className="tutorial-replay-btn"
+              onClick={replayTutorial}
+              title="Показать обучение"
+              aria-label="Показать обучение"
+              type="button"
+            >
+              ?
+            </button>
             {userProfile && (
               <div className="player-resources" aria-label="Ресурсы участника">
                 <span><b><Star size={15} strokeWidth={1.75} aria-hidden="true" /></b> {userProfile.points.toLocaleString('ru')} <small>баллов</small></span>
@@ -654,6 +664,9 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
           defaultName={userProfile?.name}
         />
       )}
+
+      {/* NPC Tutorial */}
+      <TutorialOverlay />
     </>
   );
 }
