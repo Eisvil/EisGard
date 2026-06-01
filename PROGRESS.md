@@ -506,9 +506,19 @@ _(пусто)_
 - [x] `src/components/layouts/AdminSidebar.tsx` — пункт «Задания» (BookOpen) → `/admin/tutorial`
 - Протестировано Playwright: интерактивный шаг — клик хотспота «Кузница» → feature panel обновляется → автопереход на step 4
 
-## Следующее (по порядку из SPEC)
+### Auto-scroll туториала к spotlight-элементу (2026-06-01)
+- [x] `src/components/features/TutorialOverlay.tsx` — `updateSpotlight` (scroll-aware): при переходе между шагами проверяет видимость цели с учётом высоты NPC-диалога (200px), при необходимости вызывает `window.scrollTo({ behavior: 'smooth' })`, ждёт 450ms, ре-измеряет spotlight
+- [x] `measureSpotlight` — отдельная функция чистого замера без scroll; используется в resize/scroll listeners (исключает цикл scroll → measure → scroll)
+- Протестировано Playwright: мобильный 390px (scrollY=577 к `.feature`), десктоп 1440×900px (scrollY=157 к `.feature`)
+- Ветка `feature/npc-tutorial` влита в `main`
 
-_(все основные US реализованы)_
+## Следующее
+
+### Игровые механики (запланировано)
+- [ ] **Квесты:** NPC на карте (портрет, имя, позиция), таблицы `quests` + `user_quests`, диалоги привязаны к действиям (донат / подписка / волонтёрство / материалы / партнёрство)
+- [ ] **Портрет NPC:** разместить арт-файл `/public/npc/elder.png` — fallback-иконка заменится автоматически
+- [ ] **Пригласить друга:** реферальная система, уникальные ссылки, баллы за приглашение
+- [ ] **Email-уведомления:** `donation_confirmed`, `new_title` — после подключения Resend
 
 ---
 

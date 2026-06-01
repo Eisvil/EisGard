@@ -342,6 +342,33 @@ Supabase по умолчанию выставляет `maxAge` cookie равны
 
 **Файлы:** `src/middleware.ts`, `src/lib/supabase/server.ts`.
 
+## Туториал: wrapper-паттерн позиционирования NPC-диалога
+
+`NPCDialog` рендерится через двойной контейнер: `.npc-dialog-wrap` (position: fixed, flex justify-content: center) + `.npc-dialog` (обычный блок без position). Анимация `npc-dialog-in` навешена на wrapper.
+
+**Причина:** исходно использовалось `position: fixed; left: 50%; transform: translateX(-50%)` напрямую на `.npc-dialog`. CSS-анимации с `fill-mode: both` перезаписывают `transform` финальным состоянием (`scale(1) translateY(0)`) — `translateX(-50%)` терялся после завершения анимации, диалог уходил вправо от центра. Wrapper-паттерн разделяет позиционирование (контейнер) и анимацию (диалог), устраняя конфликт.
+
+## Туториал: spotlight через box-shadow, не overlay-div
+
+Spotlight реализован через один `position: fixed` div с `box-shadow: 0 0 0 9999px rgba(40,32,20,.78)` — это создаёт тёмный фон вокруг выделенного элемента.
+
+**Почему не 4 div-а вокруг или SVG-mask:** box-shadow работает без изменения DOM-элементов страницы, поддерживает `transition` для плавного перехода между шагами, не требует clip-path или SVG. Единственный div с `pointer-events: none` — никаких проблем с кликами.
+
+## Туториал: разделение updateSpotlight / measureSpotlight
+
+`updateSpotlight` (scroll-aware) вызывается только при переходе между шагами: проверяет видимость цели с `NPC_DIALOG_HEIGHT = 200px` резервом, при необходимости скроллит и ждёт 450ms.  
+`measureSpotlight` (чистый замер) используется в resize/scroll event-listeners.
+
+**Почему разделены:** если бы scroll-listener тоже вызывал scroll-aware функцию, возник бы цикл: авто-скролл → scroll event → попытка ещё раз прокрутить. Разделение снимает проблему без флагов «in progress».
+
+## Туториал: данные шагов в Supabase, fallback на хардкод
+
+Шаги туториала хранятся в таблице `tutorial_steps`. `TutorialOverlay` при первом монтировании (если туториал ещё не пройден) делает `fetch('/api/tutorial-steps')` с таймаутом 1500ms. При ошибке или таймауте — используются хардкодные шаги из `src/lib/tutorial/steps.ts`.
+
+**Почему не только хардкод:** нужна возможность редактировать тексты через `/admin/tutorial` без деплоя.  
+**Почему не только БД:** хардкод — safety-net при недоступной БД или на локальной разработке без env-переменных.  
+**Fetch только при active-сессии:** если `localStorage.getItem('gorodische_tutorial_done')` установлен, компонент возвращает `null` немедленно — 0 запросов для пользователей, уже прошедших туториал.
+
 ## Дизайн: Тёплая тема shadcn в admin.css
 
 13 HSL-переменных shadcn сдвинуты с cold neutral-gray на тёплые paper/olive:
