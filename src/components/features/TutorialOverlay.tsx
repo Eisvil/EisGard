@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import NPCDialog from './NPCDialog';
-import { TUTORIAL_STEPS, TUTORIAL_STORAGE_KEY } from '@/lib/tutorial/steps';
+import { TUTORIAL_STEPS, TUTORIAL_STORAGE_KEY, type TutorialStep } from '@/lib/tutorial/steps';
 
 interface SpotlightRect {
   left: number;
@@ -27,19 +27,23 @@ export default function TutorialOverlay() {
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null);
+  const [steps, setSteps] = useState<TutorialStep[]>(TUTORIAL_STEPS);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const currentStep = TUTORIAL_STEPS[stepIndex];
+  const currentStep = steps[stepIndex];
 
-  const updateSpotlight = useCallback((index: number) => {
-    const step = TUTORIAL_STEPS[index];
-    if (!step.selector) {
-      setSpotlight(null);
-      return;
-    }
-    const rect = getSpotlightRect(step.selector, step.padding ?? 12);
-    setSpotlight(rect);
-  }, []);
+  const updateSpotlight = useCallback(
+    (index: number, stepsArr: TutorialStep[]) => {
+      const step = stepsArr[index];
+      if (!step?.selector) {
+        setSpotlight(null);
+        return;
+      }
+      const rect = getSpotlightRect(step.selector, step.padding ?? 12);
+      setSpotlight(rect);
+    },
+    []
+  );
 
   const handleComplete = useCallback(() => {
     setActive(false);
@@ -49,23 +53,45 @@ export default function TutorialOverlay() {
   }, []);
 
   const handleNext = useCallback(() => {
-    const next = stepIndex + 1;
-    if (next >= TUTORIAL_STEPS.length) {
-      handleComplete();
-      return;
-    }
-    setStepIndex(next);
-    // allow DOM to update before measuring
-    timerRef.current = setTimeout(() => updateSpotlight(next), 50);
+    setSteps((prev) => {
+      const next = stepIndex + 1;
+      if (next >= prev.length) {
+        handleComplete();
+        return prev;
+      }
+      setStepIndex(next);
+      timerRef.current = setTimeout(() => updateSpotlight(next, prev), 50);
+      return prev;
+    });
   }, [stepIndex, handleComplete, updateSpotlight]);
 
   const handlePrev = useCallback(() => {
     const prev = Math.max(0, stepIndex - 1);
     setStepIndex(prev);
-    timerRef.current = setTimeout(() => updateSpotlight(prev), 50);
-  }, [stepIndex, updateSpotlight]);
+    timerRef.current = setTimeout(() => updateSpotlight(prev, steps), 50);
+  }, [stepIndex, steps, updateSpotlight]);
 
-  // Escape key — skip tutorial
+  // Attach click listeners for interactive steps
+  useEffect(() => {
+    if (!active || !currentStep?.interactive || !currentStep?.selector) return;
+
+    let debounced = false;
+    const handler = () => {
+      if (debounced) return;
+      debounced = true;
+      // Let the native click propagate first (hotspot selects), then advance
+      timerRef.current = setTimeout(() => handleNext(), 350);
+    };
+
+    const elements = document.querySelectorAll(currentStep.selector);
+    elements.forEach((el) => el.addEventListener('click', handler, true));
+
+    return () => {
+      elements.forEach((el) => el.removeEventListener('click', handler, true));
+    };
+  }, [active, currentStep, handleNext]);
+
+  // Escape key
   useEffect(() => {
     if (!active) return;
     const handler = (e: KeyboardEvent) => {
@@ -75,49 +101,85 @@ export default function TutorialOverlay() {
     return () => window.removeEventListener('keydown', handler);
   }, [active, handleComplete]);
 
-  // Auto-start on first visit
+  // Auto-start: fetch steps from DB, then check localStorage
   useEffect(() => {
-    let done = false;
-    try {
-      done = !!localStorage.getItem(TUTORIAL_STORAGE_KEY);
-    } catch {}
-    if (done) return;
+    let cancelled = false;
 
-    timerRef.current = setTimeout(() => {
-      setStepIndex(0);
-      setSpotlight(null);
-      setActive(true);
-    }, 900);
+    async function init() {
+      let done = false;
+      try {
+        done = !!localStorage.getItem(TUTORIAL_STORAGE_KEY);
+      } catch {}
+      if (done) return;
 
+      // Fetch steps from DB (with timeout fallback)
+      try {
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 1500);
+        const res = await fetch('/api/tutorial-steps', { signal: ctrl.signal });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled && Array.isArray(data.data) && data.data.length > 0) {
+            // Map snake_case DB fields to camelCase TutorialStep
+            const mapped: TutorialStep[] = data.data.map((row: Record<string, unknown>) => ({
+              selector: row.selector as string | undefined,
+              title: row.title as string,
+              text: row.text as string,
+              padding: row.padding as number | undefined,
+              interactive: row.interactive as boolean | undefined,
+              interactiveHint: row.interactive_hint as string | undefined,
+            }));
+            setSteps(mapped);
+          }
+        }
+      } catch {
+        // fallback to default steps (already set)
+      }
+
+      if (!cancelled) {
+        timerRef.current = setTimeout(() => {
+          setStepIndex(0);
+          setSpotlight(null);
+          setActive(true);
+        }, 900);
+      }
+    }
+
+    init();
     return () => {
+      cancelled = true;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, []);
 
-  // Re-measure spotlight on resize/scroll
+  // Re-measure on resize/scroll
   useEffect(() => {
     if (!active) return;
-    const measure = () => updateSpotlight(stepIndex);
+    const measure = () => updateSpotlight(stepIndex, steps);
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, { passive: true });
     return () => {
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure);
     };
-  }, [active, stepIndex, updateSpotlight]);
+  }, [active, stepIndex, steps, updateSpotlight]);
 
   if (!active) return null;
 
+  const isInteractive = !!currentStep?.interactive;
+
   return (
     <>
-      {/* click-catcher behind spotlight: clicking dark area advances tutorial */}
-      <div
-        className="tutorial-click-catcher"
-        onClick={handleNext}
-        aria-hidden="true"
-      />
+      {/* click-catcher — not rendered for interactive steps so user can click the spotlit element */}
+      {!isInteractive && (
+        <div
+          className="tutorial-click-catcher"
+          onClick={handleNext}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* spotlight hole with box-shadow backdrop */}
       {spotlight && (
         <div
           className="tutorial-spotlight"
@@ -131,11 +193,10 @@ export default function TutorialOverlay() {
         />
       )}
 
-      {/* NPC dialog */}
       <NPCDialog
         step={currentStep}
         stepIndex={stepIndex}
-        totalSteps={TUTORIAL_STEPS.length}
+        totalSteps={steps.length}
         onNext={handleNext}
         onPrev={handlePrev}
         onSkip={handleComplete}
@@ -144,7 +205,6 @@ export default function TutorialOverlay() {
   );
 }
 
-// Public helper — call to replay tutorial (used by HUD button)
 export function replayTutorial() {
   try {
     localStorage.removeItem(TUTORIAL_STORAGE_KEY);

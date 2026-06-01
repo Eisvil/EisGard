@@ -493,6 +493,19 @@ _(пусто)_
 - **Примечание:** портрет `/public/npc/elder.png` — заглушка (показывается fallback иконка User); подставить готовый арт без изменения кода
 - **Примечание:** NPC-компонент спроектирован с `mode: 'tutorial' | 'quest'` для будущей системы квестов
 
+### Доработка туториала + Admin «Задания» (2026-06-01)
+- [x] `src/lib/tutorial/steps.ts` — новый порядок шагов (5↔6 swap, «Летопись»→«Общий вклад»); тип расширен: `interactive`, `interactiveHint`
+- [x] `src/components/features/NPCDialog.tsx` — интерактивный шаг: скрыта кнопка «Далее», пульсирующий hint «↑ Нажми на любой значок»
+- [x] `src/components/features/TutorialOverlay.tsx` — для `interactive`-шагов: не рендерит click-catcher, вешает capture-listener на `.hotspot`; после клика 350ms задержка → `handleNext()`; fetch шагов из `/api/tutorial-steps` с 1.5s timeout + fallback на хардкод; snake_case→camelCase маппинг DB ответа
+- [x] `src/styles/components.css` — `.npc-interactive-hint` + `@keyframes npc-pulse`
+- [x] `supabase/migrations/20260601000000_tutorial_steps.sql` — таблица `tutorial_steps`, RLS, trigger moddatetime, seed 8 строк; применена через Supabase MCP
+- [x] `src/app/api/tutorial-steps/route.ts` — GET публичный (активные шаги), `Cache-Control: max-age=300`
+- [x] `src/app/api/admin/tutorial-steps/[id]/route.ts` — PATCH (только `title` + `text`, только admin)
+- [x] `src/components/features/admin/TutorialStepsManager.tsx` — shadcn Table + Dialog редактирования
+- [x] `src/app/(admin)/admin/tutorial/page.tsx` — Admin страница «Задания»
+- [x] `src/components/layouts/AdminSidebar.tsx` — пункт «Задания» (BookOpen) → `/admin/tutorial`
+- Протестировано Playwright: интерактивный шаг — клик хотспота «Кузница» → feature panel обновляется → автопереход на step 4
+
 ## Следующее (по порядку из SPEC)
 
 _(все основные US реализованы)_

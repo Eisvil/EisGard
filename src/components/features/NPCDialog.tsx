@@ -23,73 +23,84 @@ export default function NPCDialog({
 }: NPCDialogProps) {
   const isFirst = stepIndex === 0;
   const isLast = stepIndex === totalSteps - 1;
+  const isInteractive = !!step.interactive;
 
   return (
     <div className="npc-dialog-wrap">
-    <div className="npc-dialog" role="dialog" aria-modal="false" aria-label="Обучение">
-      <div className="npc-portrait-wrap">
-        <img
-          src="/npc/elder.png"
-          alt="Ведун"
-          className="npc-portrait"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.display = 'none';
-            (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty(
-              'display',
-              'flex'
-            );
-          }}
-        />
-        <div className="npc-portrait-fallback">
-          <User size={40} strokeWidth={1.5} />
-        </div>
-        <span className="npc-name">Ведун</span>
-      </div>
-
-      <div className="npc-speech">
-        <p className="npc-title">{step.title}</p>
-        <p className="npc-text">{step.text}</p>
-
-        <div className="npc-footer">
-          <div className="npc-steps" aria-label={`Шаг ${stepIndex + 1} из ${totalSteps}`}>
-            {Array.from({ length: totalSteps }).map((_, i) => (
-              <span
-                key={i}
-                className={`npc-dot${i === stepIndex ? ' npc-dot--active' : ''}`}
-              />
-            ))}
+      <div className="npc-dialog" role="dialog" aria-modal="false" aria-label="Обучение">
+        <div className="npc-portrait-wrap">
+          <img
+            src="/npc/elder.png"
+            alt="Ведун"
+            className="npc-portrait"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+              (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty(
+                'display',
+                'flex'
+              );
+            }}
+          />
+          <div className="npc-portrait-fallback">
+            <User size={40} strokeWidth={1.5} />
           </div>
+          <span className="npc-name">Ведун</span>
+        </div>
 
-          <div className="npc-actions">
-            {!isFirst && (
-              <button className="npc-btn-secondary" onClick={onPrev}>
-                Назад
-              </button>
-            )}
+        <div className="npc-speech">
+          <p className="npc-title">{step.title}</p>
+          <p className="npc-text">{step.text}</p>
 
-            {isLast ? (
-              <>
-                <Link href="/auth/register" className="primary-button npc-btn-cta" onClick={onSkip}>
-                  Стать участником
-                </Link>
-                <button className="npc-btn-skip" onClick={onSkip}>
-                  Позже
+          {isInteractive && step.interactiveHint && (
+            <span className="npc-interactive-hint" aria-live="polite">
+              ↑ {step.interactiveHint}
+            </span>
+          )}
+
+          <div className="npc-footer">
+            <div className="npc-steps" aria-label={`Шаг ${stepIndex + 1} из ${totalSteps}`}>
+              {Array.from({ length: totalSteps }).map((_, i) => (
+                <span
+                  key={i}
+                  className={`npc-dot${i === stepIndex ? ' npc-dot--active' : ''}`}
+                />
+              ))}
+            </div>
+
+            <div className="npc-actions">
+              {!isFirst && (
+                <button className="npc-btn-secondary" onClick={onPrev}>
+                  Назад
                 </button>
-              </>
-            ) : (
-              <>
-                <button className="primary-button npc-btn-next" onClick={onNext}>
-                  {isFirst ? 'Начать' : 'Далее'}
-                </button>
+              )}
+
+              {isLast ? (
+                <>
+                  <Link href="/auth/register" className="primary-button npc-btn-cta" onClick={onSkip}>
+                    Стать участником
+                  </Link>
+                  <button className="npc-btn-skip" onClick={onSkip}>
+                    Позже
+                  </button>
+                </>
+              ) : !isInteractive ? (
+                <>
+                  <button className="primary-button npc-btn-next" onClick={onNext}>
+                    {isFirst ? 'Начать' : 'Далее'}
+                  </button>
+                  <button className="npc-btn-skip" onClick={onSkip}>
+                    Пропустить
+                  </button>
+                </>
+              ) : (
                 <button className="npc-btn-skip" onClick={onSkip}>
                   Пропустить
                 </button>
-              </>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }
