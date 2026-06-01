@@ -1,6 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import ReactCrop, {
+  centerCrop,
+  makeAspectCrop,
+  type Crop,
+  type PixelCrop,
+} from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -19,6 +26,47 @@ import { Badge } from '@/components/ui/badge';
 import { Pencil, Trash2, Plus, Upload } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { adminCreateNpc, adminUpdateNpc, adminDeleteNpc, type NpcRow } from '@/app/actions/quests';
+
+// ─── Crop helpers (same as AvatarUploader) ───────────────────────────────────
+
+function centerSquareCrop(width: number, height: number): Crop {
+  return centerCrop(
+    makeAspectCrop({ unit: '%', width: 80 }, 1, width, height),
+    width,
+    height,
+  );
+}
+
+async function getCroppedBlob(image: HTMLImageElement, crop: PixelCrop): Promise<Blob> {
+  const canvas = document.createElement('canvas');
+  const size = 256;
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas context unavailable');
+
+  const scaleX = image.naturalWidth / image.width;
+  const scaleY = image.naturalHeight / image.height;
+
+  ctx.drawImage(
+    image,
+    Math.round(crop.x * scaleX),
+    Math.round(crop.y * scaleY),
+    Math.round(crop.width * scaleX),
+    Math.round(crop.height * scaleY),
+    0, 0, size, size,
+  );
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('Canvas toBlob failed'))),
+      'image/jpeg',
+      0.92,
+    );
+  });
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
   initialNpcs: NpcRow[];
@@ -42,6 +90,8 @@ const EMPTY_FORM: FormState = {
   sort_order: 1,
 };
 
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function NpcManager({ initialNpcs }: Props) {
   const [npcs, setNpcs] = useState<NpcRow[]>(initialNpcs);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -52,6 +102,12 @@ export default function NpcManager({ initialNpcs }: Props) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+
+  // Crop state
+  const [cropImgSrc, setCropImgSrc] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Crop>();
+  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const cropImgRef = useRef<HTMLImageElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function showToast(msg: string) {
@@ -80,24 +136,56 @@ export default function NpcManager({ initialNpcs }: Props) {
     setDialogOpen(true);
   }
 
-  async function handlePortraitUpload(file: File) {
-    if (file.size > 3 * 1024 * 1024) { setError('Файл слишком большой (макс. 3 МБ)'); return; }
+  // Open file picker → read as data URL → show crop modal
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Файл слишком большой (макс. 5 МБ)');
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImgSrc(reader.result as string);
+      setCrop(undefined);
+      setCompletedCrop(undefined);
+      setError('');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  }
+
+  const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const { width, height } = e.currentTarget;
+    setCrop(centerSquareCrop(width, height));
+  }, []);
+
+  async function handleCropConfirm() {
+    if (!cropImgRef.current || !completedCrop) return;
     setUploading(true);
     setError('');
     try {
+      const blob = await getCroppedBlob(cropImgRef.current, completedCrop);
       const supabase = createBrowserSupabaseClient();
-      const ext = file.name.split('.').pop() ?? 'png';
-      const path = `npcs/${editingId ?? 'new'}_${Date.now()}.${ext}`;
+      const path = `npcs/${editingId ?? 'new'}_${Date.now()}.jpg`;
       const { error: uploadError } = await supabase.storage
-        .from('covers').upload(path, file, { upsert: true, contentType: file.type });
+        .from('covers')
+        .upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
       if (uploadError) { setError('Ошибка загрузки: ' + uploadError.message); return; }
       const { data: { publicUrl } } = supabase.storage.from('covers').getPublicUrl(path);
       setForm(f => ({ ...f, portrait_url: publicUrl }));
+      setCropImgSrc(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Ошибка загрузки');
     } finally {
       setUploading(false);
     }
+  }
+
+  function handleCropCancel() {
+    setCropImgSrc(null);
+    setError('');
   }
 
   async function handleSave() {
@@ -243,10 +331,7 @@ export default function NpcManager({ initialNpcs }: Props) {
                     type="file"
                     accept="image/png,image/jpeg,image/webp"
                     className="hidden"
-                    onChange={e => {
-                      const f = e.target.files?.[0];
-                      if (f) { handlePortraitUpload(f); e.target.value = ''; }
-                    }}
+                    onChange={handleFileChange}
                   />
                   <Button
                     type="button"
@@ -279,7 +364,7 @@ export default function NpcManager({ initialNpcs }: Props) {
               />
             </div>
 
-            {/* Position — manual fallback, main placement via Map section */}
+            {/* Position */}
             <div className="space-y-2">
               <Label>Начальная позиция</Label>
               <p className="text-xs text-muted-foreground">
@@ -348,6 +433,55 @@ export default function NpcManager({ initialNpcs }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Crop modal — rendered outside Dialog to avoid z-index conflicts */}
+      {cropImgSrc && (
+        <div className="crop-modal-overlay" style={{ zIndex: 1300 }} onClick={handleCropCancel}>
+          <div className="crop-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="crop-modal-title">Выбрать область портрета</h3>
+            <p className="crop-modal-hint">Перетащите и измените размер квадрата</p>
+
+            <div className="crop-modal-canvas">
+              <ReactCrop
+                crop={crop}
+                onChange={(c) => setCrop(c)}
+                onComplete={(c) => setCompletedCrop(c)}
+                aspect={1}
+                circularCrop={false}
+                keepSelection
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  ref={cropImgRef}
+                  src={cropImgSrc}
+                  alt="Кроп портрета"
+                  onLoad={onCropImageLoad}
+                  style={{ maxHeight: '60vh', maxWidth: '100%' }}
+                />
+              </ReactCrop>
+            </div>
+
+            {error && <p className="cert-error">{error}</p>}
+
+            <div className="crop-modal-actions">
+              <button
+                className="primary-button"
+                onClick={handleCropConfirm}
+                disabled={uploading || !completedCrop}
+              >
+                {uploading ? 'Загружается…' : 'Сохранить портрет'}
+              </button>
+              <button
+                className="text-link"
+                onClick={handleCropCancel}
+                disabled={uploading}
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={open => { if (!open) setDeleteId(null); }}>
