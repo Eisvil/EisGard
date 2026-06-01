@@ -390,6 +390,10 @@
 ## В работе
 _(пусто)_
 
+### Авторизация: 3-дневная скользящая сессия (2026-06-01)
+- [x] `src/middleware.ts` — константа `THREE_DAYS_SECONDS`; в `setAll` переопределён `maxAge`; rolling-блок: при каждом запросе от авторизованного пользователя куки `sb-*-auth-token` переставляются с `maxAge = 259200` (3 дня от текущего момента)
+- [x] `src/lib/supabase/server.ts` — аналогичное переопределение `maxAge` в `setAll` для серверных операций (update-password, email confirmation)
+
 ### Баг-фикс: волонтёрские дни пропали (2026-05-30)
 - [x] `supabase/migrations/20260530000001_volunteer_days_rpc.sql` — RPC `get_volunteer_days_total()` (SECURITY DEFINER, GRANT TO anon/authenticated)
 - [x] `src/app/(public)/page.tsx` — прямой запрос к `volunteer_applications` заменён на `supabase.rpc('get_volunteer_days_total')`
