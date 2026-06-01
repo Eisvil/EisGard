@@ -11,9 +11,9 @@ interface SpotlightRect {
   height: number;
 }
 
-function getSpotlightRect(selector: string, padding = 12): SpotlightRect | null {
-  const el = document.querySelector(selector);
-  if (!el) return null;
+const NPC_DIALOG_HEIGHT = 200; // reserved px at bottom for the fixed NPC dialog
+
+function measureRect(el: Element, padding: number): SpotlightRect {
   const r = el.getBoundingClientRect();
   return {
     left: r.left - padding,
@@ -32,15 +32,44 @@ export default function TutorialOverlay() {
 
   const currentStep = steps[stepIndex];
 
+  // Pure re-measure — used by resize/scroll listeners (no scroll attempt)
+  const measureSpotlight = useCallback((index: number, stepsArr: TutorialStep[]) => {
+    const step = stepsArr[index];
+    if (!step?.selector) { setSpotlight(null); return; }
+    const el = document.querySelector(step.selector);
+    if (!el) { setSpotlight(null); return; }
+    setSpotlight(measureRect(el, step.padding ?? 12));
+  }, []);
+
+  // Scroll-aware update — used when transitioning between steps
   const updateSpotlight = useCallback(
     (index: number, stepsArr: TutorialStep[]) => {
       const step = stepsArr[index];
-      if (!step?.selector) {
-        setSpotlight(null);
+      if (!step?.selector) { setSpotlight(null); return; }
+
+      const el = document.querySelector(step.selector);
+      if (!el) { setSpotlight(null); return; }
+
+      const r = el.getBoundingClientRect();
+      const fullyVisible =
+        r.top >= 0 && r.bottom <= window.innerHeight - NPC_DIALOG_HEIGHT;
+
+      if (!fullyVisible) {
+        // Scroll so element appears centered in the visible area above the dialog
+        const visibleH = window.innerHeight - NPC_DIALOG_HEIGHT;
+        const targetY = window.scrollY + r.top - Math.max(0, (visibleH - r.height) / 2);
+        window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
+
+        // Re-measure after scroll animation (~450ms)
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          const el2 = document.querySelector(step.selector!);
+          if (el2) setSpotlight(measureRect(el2, step.padding ?? 12));
+        }, 450);
         return;
       }
-      const rect = getSpotlightRect(step.selector, step.padding ?? 12);
-      setSpotlight(rect);
+
+      setSpotlight(measureRect(el, step.padding ?? 12));
     },
     []
   );
@@ -153,17 +182,17 @@ export default function TutorialOverlay() {
     };
   }, []);
 
-  // Re-measure on resize/scroll
+  // Re-measure on resize/scroll — plain measurement, no scroll attempt
   useEffect(() => {
     if (!active) return;
-    const measure = () => updateSpotlight(stepIndex, steps);
+    const measure = () => measureSpotlight(stepIndex, steps);
     window.addEventListener('resize', measure);
     window.addEventListener('scroll', measure, { passive: true });
     return () => {
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure);
     };
-  }, [active, stepIndex, steps, updateSpotlight]);
+  }, [active, stepIndex, steps, measureSpotlight]);
 
   if (!active) return null;
 
