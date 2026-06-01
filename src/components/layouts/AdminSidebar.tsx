@@ -15,6 +15,7 @@ import {
   LogOut,
   Settings,
   BookOpen,
+  Sword,
 } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { href: '/admin/news',         label: 'Новости',       icon: Newspaper },
   { href: '/admin/users',        label: 'Пользователи',  icon: Users },
   { href: '/admin/tutorial',     label: 'Задания',        icon: BookOpen },
+  { href: '/admin/quests',       label: 'Квесты',         icon: Sword },
   { href: '/admin/settings',     label: 'Настройки',     icon: Settings },
 ];
 

@@ -10,6 +10,7 @@ import { formatMoney as _formatMoney, getProgress as _getProgress } from '@/lib/
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { SupportModal } from '@/components/features/SupportModal';
 import TutorialOverlay, { replayTutorial } from '@/components/features/TutorialOverlay';
+import QuestOverlay from '@/components/features/QuestOverlay';
 
 export type ChronicleEvent = {
   id: string;
@@ -48,6 +49,13 @@ export type UserProfile = {
   donated_kopecks: number;
   volunteer_days: number;
   avatar_url?: string | null;
+};
+
+export type NpcSettings = {
+  name: string;
+  position_x: number;
+  position_y: number;
+  portrait_url: string;
 };
 
 export type SettlementObject = {
@@ -105,17 +113,20 @@ type MapSectionProps = {
   newsItems?: NewsItem[];
   siteStats?: SiteStats;
   userProfile?: UserProfile;
+  npcSettings?: NpcSettings;
 };
 
-export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile: initialProfile }: MapSectionProps) {
+export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile: initialProfile, npcSettings }: MapSectionProps) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeZone, setActiveZone] = useState<string>(ALL_ZONES);
   const [mapScale, setMapScale] = useState(1);
   const [toastMsg, setToastMsg] = useState('');
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [showQuestOverlay, setShowQuestOverlay] = useState(false);
   const [chronicles, setChronicles] = useState<ChronicleEvent[]>(initialChronicle);
   const [userProfile, setUserProfile] = useState<UserProfile | undefined>(initialProfile);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapCanvasRef = useRef<HTMLDivElement>(null);
   const mapImageRef = useRef<HTMLImageElement>(null);
@@ -197,7 +208,8 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = createBrowserSupabaseClient() as any;
     sb.auth.getUser().then(async ({ data: { user } }: { data: { user: { id: string } | null } }) => {
-      if (!user) { setUserProfile(undefined); return; }
+      if (!user) { setUserProfile(undefined); setUserId(undefined); return; }
+      setUserId(user.id);
       const [{ data: p }, { data: donations }, { data: volunteer }] = await Promise.all([
         sb.from('profiles').select('full_name, points, avatar_url, title:title_id(name)').eq('id', user.id).maybeSingle(),
         sb.from('donations').select('amount_kopecks').eq('user_id', user.id).eq('status', 'confirmed'),
@@ -436,6 +448,31 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
                 </button>
               );
             })}
+
+            {/* NPC Ведун */}
+            {npcSettings && (
+              <button
+                type="button"
+                className="npc-hotspot"
+                style={{ left: `${npcSettings.position_x}%`, top: `${npcSettings.position_y}%` }}
+                aria-label={npcSettings.name}
+                title={npcSettings.name}
+                onClick={() => setShowQuestOverlay(true)}
+              >
+                {npcSettings.portrait_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={npcSettings.portrait_url}
+                    alt={npcSettings.name}
+                    className="npc-hotspot-img"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="npc-hotspot-fallback" aria-hidden="true">👤</span>
+                )}
+                <span className="npc-hotspot-label">{npcSettings.name}</span>
+              </button>
+            )}
           </div>
 
           {/* Zoom */}
@@ -667,6 +704,16 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
 
       {/* NPC Tutorial */}
       <TutorialOverlay />
+
+      {/* NPC Quest Overlay */}
+      {showQuestOverlay && npcSettings && (
+        <QuestOverlay
+          npcName={npcSettings.name}
+          npcPortraitUrl={npcSettings.portrait_url}
+          userId={userId}
+          onClose={() => setShowQuestOverlay(false)}
+        />
+      )}
     </>
   );
 }

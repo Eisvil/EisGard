@@ -79,6 +79,10 @@ type Settings = {
   social_vk_icon: string;
   social_telegram_icon: string;
   social_youtube_icon: string;
+  npc_name: string;
+  npc_portrait_url: string;
+  npc_position_x: number;
+  npc_position_y: number;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -260,6 +264,39 @@ export function SettingsManager({
     setTimeout(() => setCoeffSaved(false), 2500);
   }
 
+  // --- NPC ---
+  const [npcName, setNpcName] = useState(initialSettings.npc_name);
+  const [npcPortraitUrl, setNpcPortraitUrl] = useState(initialSettings.npc_portrait_url);
+  const [npcPositionX, setNpcPositionX] = useState(String(initialSettings.npc_position_x));
+  const [npcPositionY, setNpcPositionY] = useState(String(initialSettings.npc_position_y));
+  const [savingNpc, setSavingNpc] = useState(false);
+  const [npcSaved, setNpcSaved] = useState(false);
+  const [npcError, setNpcError] = useState('');
+
+  async function saveNpc() {
+    setSavingNpc(true);
+    setNpcError('');
+    setNpcSaved(false);
+    const res = await fetch('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        npc_name: npcName,
+        npc_portrait_url: npcPortraitUrl,
+        npc_position_x: Number(npcPositionX) || 50,
+        npc_position_y: Number(npcPositionY) || 50,
+      }),
+    });
+    setSavingNpc(false);
+    if (!res.ok) {
+      const json = await res.json();
+      setNpcError(json.error?.message ?? 'Ошибка сохранения');
+      return;
+    }
+    setNpcSaved(true);
+    setTimeout(() => setNpcSaved(false), 2500);
+  }
+
   // --- Титулы ---
   const [titles, setTitles] = useState<Title[]>(initialTitles);
   const [titleDialog, setTitleDialog] = useState(false);
@@ -417,6 +454,7 @@ export function SettingsManager({
           <TabsTrigger value="skills">Навыки</TabsTrigger>
           <TabsTrigger value="materials">Материалы</TabsTrigger>
           <TabsTrigger value="pages">Страницы</TabsTrigger>
+          <TabsTrigger value="npc">NPC</TabsTrigger>
         </TabsList>
 
         {/* === КОЭФФИЦИЕНТЫ === */}
@@ -687,6 +725,89 @@ export function SettingsManager({
               </p>
             </div>
             <StaticPagesEditor />
+          </div>
+        </TabsContent>
+
+        {/* === NPC === */}
+        <TabsContent value="npc">
+          <div className="space-y-4 max-w-sm">
+            <p className="text-sm text-muted-foreground">
+              Настройки Ведуна на карте. Позиция задаётся в процентах (0–100) от размеров изображения карты.
+            </p>
+            <div>
+              <Label htmlFor="npc-name" className="text-sm">Имя NPC</Label>
+              <Input
+                id="npc-name"
+                value={npcName}
+                onChange={(e) => setNpcName(e.target.value)}
+                className="mt-1"
+                maxLength={100}
+                placeholder="Ведун"
+              />
+            </div>
+            <div>
+              <Label htmlFor="npc-portrait" className="text-sm">URL портрета</Label>
+              <Input
+                id="npc-portrait"
+                value={npcPortraitUrl}
+                onChange={(e) => setNpcPortraitUrl(e.target.value)}
+                className="mt-1"
+                maxLength={500}
+                placeholder="/npc/elder.png"
+              />
+              {npcPortraitUrl && (
+                <div className="mt-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={npcPortraitUrl}
+                    alt="Портрет NPC"
+                    className="w-16 h-16 rounded-full object-cover border border-border"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="npc-x" className="text-sm">Позиция X (%)</Label>
+                <Input
+                  id="npc-x"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={npcPositionX}
+                  onChange={(e) => setNpcPositionX(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="npc-y" className="text-sm">Позиция Y (%)</Label>
+                <Input
+                  id="npc-y"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={npcPositionY}
+                  onChange={(e) => setNpcPositionY(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+            {npcError && (
+              <Alert variant="destructive">
+                <AlertDescription>{npcError}</AlertDescription>
+              </Alert>
+            )}
+            <div className="flex items-center gap-3">
+              <Button disabled={savingNpc} onClick={saveNpc}>
+                {savingNpc ? 'Сохраняем…' : 'Сохранить'}
+              </Button>
+              {npcSaved && (
+                <span className="flex items-center gap-1 text-sm text-green-600">
+                  <CheckCircle2 size={14} /> Сохранено
+                </span>
+              )}
+            </div>
           </div>
         </TabsContent>
       </Tabs>
