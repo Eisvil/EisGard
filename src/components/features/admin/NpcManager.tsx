@@ -246,6 +246,16 @@ export default function NpcManager({ initialNpcs }: Props) {
         </div>
       )}
 
+      {/* File input OUTSIDE Dialog — иначе Radix Dialog закрывается при открытии нативного пикера,
+          input размонтируется и onChange никогда не срабатывает */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           NPC-персонажи отображаются на карте городища. Клик по NPC открывает его квесты.
@@ -330,13 +340,6 @@ export default function NpcManager({ initialNpcs }: Props) {
                   <div className="w-16 h-16 rounded-full border-2 border-dashed border-border flex items-center justify-center text-2xl flex-none">👤</div>
                 )}
                 <div className="flex flex-col gap-1">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
                   <Button
                     type="button"
                     variant="outline"
