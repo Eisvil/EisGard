@@ -452,8 +452,8 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
               );
             })}
 
-            {/* NPC персонажи */}
-            {npcs.map(npc => (
+            {/* NPC персонажи — скрыты во время туториала */}
+            {!tutorialActive && npcs.map(npc => (
               <button
                 key={npc.id}
                 type="button"
@@ -461,7 +461,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
                 style={{ left: `${npc.position_x}%`, top: `${npc.position_y}%` }}
                 aria-label={npc.name}
                 title={npc.name}
-                onClick={() => { if (!tutorialActive) setQuestOpenNpcId(npc.id); }}
+                onClick={() => setQuestOpenNpcId(npc.id)}
               >
                 {npc.portrait_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
