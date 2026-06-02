@@ -126,6 +126,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
   const [toastMsg, setToastMsg] = useState('');
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [questOpenNpcId, setQuestOpenNpcId] = useState<string | null>(null);
+  const [tutorialActive, setTutorialActive] = useState(false);
   const [chronicles, setChronicles] = useState<ChronicleEvent[]>(initialChronicle);
   const [userProfile, setUserProfile] = useState<UserProfile | undefined>(initialProfile);
   const [userId, setUserId] = useState<string | undefined>(undefined);
@@ -460,7 +461,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
                 style={{ left: `${npc.position_x}%`, top: `${npc.position_y}%` }}
                 aria-label={npc.name}
                 title={npc.name}
-                onClick={() => setQuestOpenNpcId(npc.id)}
+                onClick={() => { if (!tutorialActive) setQuestOpenNpcId(npc.id); }}
               >
                 {npc.portrait_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -712,6 +713,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
       <TutorialOverlay
         npcName={npcs[0]?.name}
         npcPortraitUrl={npcs[0]?.portrait_url ?? undefined}
+        onActiveChange={setTutorialActive}
       />
 
       {/* NPC Quest Overlay */}

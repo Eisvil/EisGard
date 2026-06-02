@@ -26,9 +26,10 @@ function measureRect(el: Element, padding: number): SpotlightRect {
 interface TutorialOverlayProps {
   npcName?: string;
   npcPortraitUrl?: string;
+  onActiveChange?: (active: boolean) => void;
 }
 
-export default function TutorialOverlay({ npcName, npcPortraitUrl }: TutorialOverlayProps = {}) {
+export default function TutorialOverlay({ npcName, npcPortraitUrl, onActiveChange }: TutorialOverlayProps = {}) {
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null);
@@ -81,10 +82,11 @@ export default function TutorialOverlay({ npcName, npcPortraitUrl }: TutorialOve
 
   const handleComplete = useCallback(() => {
     setActive(false);
+    onActiveChange?.(false);
     try {
       localStorage.setItem(TUTORIAL_STORAGE_KEY, '1');
     } catch {}
-  }, []);
+  }, [onActiveChange]);
 
   const handleNext = useCallback(() => {
     setSteps((prev) => {
@@ -176,6 +178,7 @@ export default function TutorialOverlay({ npcName, npcPortraitUrl }: TutorialOve
           setStepIndex(0);
           setSpotlight(null);
           setActive(true);
+          onActiveChange?.(true);
         }, 900);
       }
     }
