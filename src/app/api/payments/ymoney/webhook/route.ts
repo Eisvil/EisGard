@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
 import { verifyNotification } from '@/lib/payments/ymoney';
 import { awardPoints } from '@/lib/points/awardPoints';
+import { autoCompleteQuestsOnAction } from '@/app/actions/quests';
 
 // Fail fast at module load time if secret is not configured
 if (!process.env.YMONEY_NOTIFICATION_SECRET) {
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
   // Если платёж связан с подпиской — активируем её и сохраняем токен если пришёл
   if (donation.subscription_id) {
     const token = params['token'] ?? '';
-    await supabase
+    const { data: sub } = await supabase
       .from('subscriptions')
       .update({
         status: 'active',
@@ -119,7 +120,17 @@ export async function POST(request: NextRequest) {
         ...(token ? { ymoney_token: token } : {}),
       })
       .eq('id', donation.subscription_id)
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      .select('object_id')
+      .maybeSingle() as { data: { object_id: string | null } | null };
+
+    // Авто-завершить квесты типа 'subscribe'
+    if (donation.user_id) {
+      autoCompleteQuestsOnAction(donation.user_id, 'subscribe', sub?.object_id ?? donation.object_id).catch(() => {});
+    }
+  } else if (donation.user_id) {
+    // Обычный донат (не подписка) — авто-завершить квесты типа 'donate'
+    autoCompleteQuestsOnAction(donation.user_id, 'donate', donation.object_id).catch(() => {});
   }
 
   return OK();

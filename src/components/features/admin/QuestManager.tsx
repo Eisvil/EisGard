@@ -25,8 +25,19 @@ import {
   adminCreateQuest, adminUpdateQuest, adminDeleteQuest,
   type QuestRow, type NpcRow, type DialogStep, type DialogChoice,
 } from '@/app/actions/quests';
+import { TiptapEditor } from '@/components/features/admin/TiptapEditor';
 
-type ObjectOption = { id: string; name: string };
+function toTiptapDoc(text: unknown): Record<string, unknown> {
+  if (text && typeof text === 'object') return text as Record<string, unknown>;
+  const str = typeof text === 'string' ? text : '';
+  if (!str) return { type: 'doc', content: [] };
+  return {
+    type: 'doc',
+    content: [{ type: 'paragraph', content: [{ type: 'text', text: str }] }],
+  };
+}
+
+type ObjectOption = { id: string; name: string; slug: string };
 
 interface Props {
   initialQuests: QuestRow[];
@@ -40,9 +51,10 @@ const ACTION_LABELS: Record<string, string> = {
   volunteer: 'Волонтёрство',
   material:  'Материалы',
   partner:   'Партнёрство',
+  dialog:    'Диалог',
 };
 
-const ACTION_TYPES = ['donate', 'subscribe', 'volunteer', 'material', 'partner'] as const;
+const ACTION_TYPES = ['donate', 'subscribe', 'volunteer', 'material', 'partner', 'dialog'] as const;
 
 const NEXT_LABELS: Record<DialogChoice['next'], string> = {
   next:    '→ Далее',
@@ -50,17 +62,44 @@ const NEXT_LABELS: Record<DialogChoice['next'], string> = {
   decline: '✗ Отложить',
 };
 
+const NEXT_LABELS_DIALOG: Partial<Record<DialogChoice['next'], string>> = {
+  next:    '✓ Правильный ответ',
+  decline: '✗ Неправильный ответ',
+};
+
+function computeActionUrl(actionType: string, objectId: string, objects: ObjectOption[]): string | null {
+  switch (actionType) {
+    case 'donate':
+    case 'subscribe': {
+      if (objectId) {
+        const obj = objects.find(o => o.id === objectId);
+        return obj ? `/objects/${obj.slug}` : '/';
+      }
+      return '/';
+    }
+    case 'volunteer': return '/volunteers';
+    case 'material':  return '/materials';
+    case 'partner':   return '/partners';
+    case 'dialog':    return null;
+    default:          return null;
+  }
+}
+
 type FormState = {
   title: string;
   description: string;
   reward_text: string;
   action_type: string;
-  action_url: string;
   reward_points: number;
   object_id: string;
   npc_id: string;
   dialogs: DialogStep[];
   is_active: boolean;
+  is_recurring: boolean;
+  hide_npc_on_complete: boolean;
+  prerequisite_quest_id: string;
+  available_from: string;
+  available_until: string;
   sort_order: number;
 };
 
@@ -69,28 +108,36 @@ const EMPTY_FORM: FormState = {
   description: '',
   reward_text: '',
   action_type: 'donate',
-  action_url: '',
   reward_points: 0,
   object_id: '',
   npc_id: '',
   dialogs: [],
   is_active: true,
+  is_recurring: false,
+  hide_npc_on_complete: false,
+  prerequisite_quest_id: '',
+  available_from: '',
+  available_until: '',
   sort_order: 0,
 };
 
 function toForm(q: QuestRow): FormState {
   return {
-    title:         q.title,
-    description:   q.description,
-    reward_text:   q.reward_text ?? '',
-    action_type:   q.action_type,
-    action_url:    q.action_url ?? '',
-    reward_points: q.reward_points,
-    object_id:     q.object_id ?? '',
-    npc_id:        q.npc_id ?? '',
-    dialogs:       q.dialogs ?? [],
-    is_active:     q.is_active,
-    sort_order:    q.sort_order,
+    title:                 q.title,
+    description:           q.description,
+    reward_text:           q.reward_text ?? '',
+    action_type:           q.action_type,
+    reward_points:         q.reward_points,
+    object_id:             q.object_id ?? '',
+    npc_id:                q.npc_id ?? '',
+    dialogs:               q.dialogs ?? [],
+    is_active:             q.is_active,
+    is_recurring:          q.is_recurring ?? false,
+    hide_npc_on_complete:  q.hide_npc_on_complete ?? false,
+    prerequisite_quest_id: q.prerequisite_quest_id ?? '',
+    available_from:        q.available_from ?? '',
+    available_until:       q.available_until ?? '',
+    sort_order:            q.sort_order,
   };
 }
 
@@ -100,6 +147,7 @@ function DialogStepEditor({
   step,
   index,
   total,
+  isDialogQuest,
   onChange,
   onRemove,
   onMoveUp,
@@ -108,11 +156,17 @@ function DialogStepEditor({
   step: DialogStep;
   index: number;
   total: number;
+  isDialogQuest: boolean;
   onChange: (s: DialogStep) => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
+  const nextOptions: DialogChoice['next'][] = isDialogQuest
+    ? ['next', 'decline']
+    : ['next', 'accept', 'decline'];
+  const nextLabels = isDialogQuest ? NEXT_LABELS_DIALOG : NEXT_LABELS;
+
   return (
     <div className="rounded-md border border-border p-3 space-y-2 bg-muted/10">
       <div className="flex items-center gap-2">
@@ -146,12 +200,10 @@ function DialogStepEditor({
         </button>
       </div>
 
-      <Textarea
-        value={step.text}
-        onChange={e => onChange({ ...step, text: e.target.value })}
-        placeholder="Текст реплики NPC"
-        rows={2}
-        className="text-sm resize-none"
+      <TiptapEditor
+        value={toTiptapDoc(step.text)}
+        onChange={json => onChange({ ...step, text: json })}
+        simple
       />
 
       {step.type === 'choice' && (
@@ -175,12 +227,12 @@ function DialogStepEditor({
                   onChange({ ...step, choices });
                 }}
               >
-                <SelectTrigger className="h-7 w-36 text-xs shrink-0">
+                <SelectTrigger className="h-7 w-44 text-xs shrink-0">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(NEXT_LABELS) as DialogChoice['next'][]).map(k => (
-                    <SelectItem key={k} value={k}>{NEXT_LABELS[k]}</SelectItem>
+                  {nextOptions.map(k => (
+                    <SelectItem key={k} value={k}>{nextLabels[k] ?? NEXT_LABELS[k]}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -266,17 +318,22 @@ export default function QuestManager({ initialQuests, objects, npcs }: Props) {
     setError('');
 
     const payload = {
-      title:         form.title.trim(),
-      description:   form.description.trim(),
-      reward_text:   form.reward_text.trim() || null,
-      action_type:   form.action_type as QuestRow['action_type'],
-      action_url:    form.action_url.trim() || null,
-      reward_points: form.reward_points,
-      object_id:     form.object_id || null,
-      npc_id:        form.npc_id || null,
-      dialogs:       form.dialogs,
-      is_active:     form.is_active,
-      sort_order:    form.sort_order,
+      title:                 form.title.trim(),
+      description:           form.description.trim(),
+      reward_text:           form.reward_text.trim() || null,
+      action_type:           form.action_type as QuestRow['action_type'],
+      action_url:            computeActionUrl(form.action_type, form.object_id, objects),
+      reward_points:         form.reward_points,
+      object_id:             form.object_id || null,
+      npc_id:                form.npc_id || null,
+      dialogs:               form.dialogs,
+      is_active:             form.is_active,
+      is_recurring:          form.is_recurring,
+      hide_npc_on_complete:  form.hide_npc_on_complete,
+      prerequisite_quest_id: form.prerequisite_quest_id || null,
+      available_from:        form.available_from || null,
+      available_until:       form.available_until || null,
+      sort_order:            form.sort_order,
     };
 
     try {
@@ -417,10 +474,59 @@ export default function QuestManager({ initialQuests, objects, npcs }: Props) {
               </div>
             )}
 
+            {/* Тип действия + связанный объект */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Тип действия *</Label>
+                <Select value={form.action_type} onValueChange={v => setForm(f => ({ ...f, action_type: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ACTION_TYPES.map(t => (
+                      <SelectItem key={t} value={t}>{ACTION_LABELS[t]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Связанный объект</Label>
+                <Select
+                  value={form.object_id || 'none'}
+                  onValueChange={v => setForm(f => ({ ...f, object_id: v === 'none' ? '' : v }))}
+                >
+                  <SelectTrigger><SelectValue placeholder="Не выбран" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Без объекта</SelectItem>
+                    {objects.map(o => (
+                      <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Вычисляемый URL (read-only) */}
+            {form.action_type !== 'dialog' && (
+              <div className="space-y-1 rounded-md bg-muted/40 border border-border px-3 py-2">
+                <p className="text-xs text-muted-foreground font-medium">CTA кнопка ведёт на:</p>
+                <p className="text-sm font-mono">
+                  {computeActionUrl(form.action_type, form.object_id, objects) ?? '—'}
+                </p>
+              </div>
+            )}
+            {form.action_type === 'dialog' && (
+              <div className="rounded-md bg-muted/40 border border-border px-3 py-2">
+                <p className="text-xs text-muted-foreground">
+                  Тип «Диалог» — задание выполняется прямо в диалоговом окне NPC. CTA-кнопка не показывается.
+                </p>
+              </div>
+            )}
+
             {/* Dialogs section */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Диалоги NPC</Label>
+                <Label>
+                  {form.action_type === 'dialog' ? 'Шаги диалога (вопросы и ответы)' : 'Диалоги NPC'}
+                </Label>
                 <div className="flex gap-1">
                   <Button
                     type="button"
@@ -444,7 +550,9 @@ export default function QuestManager({ initialQuests, objects, npcs }: Props) {
               </div>
               {form.dialogs.length === 0 && (
                 <p className="text-xs text-muted-foreground py-2">
-                  Диалогов нет — будет использоваться поле «Описание» ниже.
+                  {form.action_type === 'dialog'
+                    ? 'Добавьте шаги — текстовые и с выбором ответа.'
+                    : 'Диалогов нет — будет использоваться поле «Описание» ниже.'}
                 </p>
               )}
               <div className="space-y-2">
@@ -454,6 +562,7 @@ export default function QuestManager({ initialQuests, objects, npcs }: Props) {
                     step={step}
                     index={i}
                     total={form.dialogs.length}
+                    isDialogQuest={form.action_type === 'dialog'}
                     onChange={s => updateDialog(i, s)}
                     onRemove={() => removeDialog(i)}
                     onMoveUp={() => moveDialog(i, -1)}
@@ -464,7 +573,9 @@ export default function QuestManager({ initialQuests, objects, npcs }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="q-desc">Описание (fallback если нет диалогов)</Label>
+              <Label htmlFor="q-desc">
+                {form.action_type === 'dialog' ? 'Описание (не отображается в диалоге)' : 'Описание (fallback если нет диалогов)'}
+              </Label>
               <Textarea
                 id="q-desc"
                 value={form.description}
@@ -484,52 +595,84 @@ export default function QuestManager({ initialQuests, objects, npcs }: Props) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Тип действия *</Label>
-                <Select value={form.action_type} onValueChange={v => setForm(f => ({ ...f, action_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {ACTION_TYPES.map(t => (
-                      <SelectItem key={t} value={t}>{ACTION_LABELS[t]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="q-points">Баллы за выполнение</Label>
-                <Input
-                  id="q-points"
-                  type="number"
-                  min={0}
-                  value={form.reward_points}
-                  onChange={e => setForm(f => ({ ...f, reward_points: Number(e.target.value) }))}
-                />
-              </div>
-            </div>
-
             <div className="space-y-1.5">
-              <Label htmlFor="q-url">URL действия (CTA кнопка)</Label>
+              <Label htmlFor="q-points">Баллы за выполнение</Label>
               <Input
-                id="q-url"
-                value={form.action_url}
-                onChange={e => setForm(f => ({ ...f, action_url: e.target.value }))}
-                placeholder="/donate"
-                maxLength={500}
+                id="q-points"
+                type="number"
+                min={0}
+                value={form.reward_points}
+                onChange={e => setForm(f => ({ ...f, reward_points: Number(e.target.value) }))}
               />
             </div>
 
+            {/* Условия видимости и поведения */}
+            <div className="rounded-md border border-border p-3 space-y-2 bg-muted/10">
+              <p className="text-xs font-medium text-muted-foreground">Условия и поведение</p>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.hide_npc_on_complete}
+                  onChange={e => setForm(f => ({ ...f, hide_npc_on_complete: e.target.checked }))}
+                  className="w-4 h-4 rounded"
+                />
+                <span className="text-sm">Скрыть NPC с карты пока задание выполнено</span>
+              </label>
+
+              {form.action_type === 'subscribe' && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.is_recurring}
+                    onChange={e => setForm(f => ({ ...f, is_recurring: e.target.checked }))}
+                    className="w-4 h-4 rounded"
+                  />
+                  <span className="text-sm">Повторяющийся — сбрасывается при отмене подписки</span>
+                </label>
+              )}
+            </div>
+
+            {/* Требуемый квест (цепочка) */}
             <div className="space-y-1.5">
-              <Label>Связанный объект</Label>
-              <Select value={form.object_id || 'none'} onValueChange={v => setForm(f => ({ ...f, object_id: v === 'none' ? '' : v }))}>
-                <SelectTrigger><SelectValue placeholder="Не выбран" /></SelectTrigger>
+              <Label>Требуемый квест (цепочка)</Label>
+              <Select
+                value={form.prerequisite_quest_id || 'none'}
+                onValueChange={v => setForm(f => ({ ...f, prerequisite_quest_id: v === 'none' ? '' : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Без требования" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Без объекта</SelectItem>
-                  {objects.map(o => (
-                    <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                  <SelectItem value="none">Без требования</SelectItem>
+                  {quests.filter(q => q.id !== editingId).map(q => (
+                    <SelectItem key={q.id} value={q.id}>{q.title}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {form.prerequisite_quest_id && (
+                <p className="text-xs text-muted-foreground">Квест будет виден только после выполнения выбранного.</p>
+              )}
+            </div>
+
+            {/* Период доступности */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="q-from">Доступен с</Label>
+                <Input
+                  id="q-from"
+                  type="datetime-local"
+                  value={form.available_from}
+                  onChange={e => setForm(f => ({ ...f, available_from: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="q-until">Доступен до</Label>
+                <Input
+                  id="q-until"
+                  type="datetime-local"
+                  value={form.available_until}
+                  onChange={e => setForm(f => ({ ...f, available_until: e.target.value }))}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

@@ -27,23 +27,31 @@ export type DialogChoice = {
 };
 
 export type DialogStep =
-  | { type: 'text'; text: string }
-  | { type: 'choice'; text: string; choices: DialogChoice[] };
+  | { type: 'text'; text: string | Record<string, unknown> }
+  | { type: 'choice'; text: string | Record<string, unknown>; choices: DialogChoice[] };
 
 // ─── Quests ───────────────────────────────────────────────────────────────────
+
+export type QuestActionType = 'donate' | 'subscribe' | 'volunteer' | 'material' | 'partner' | 'dialog';
 
 export type QuestWithStatus = {
   id: string;
   title: string;
   description: string;
   reward_text: string | null;
-  action_type: 'donate' | 'subscribe' | 'volunteer' | 'material' | 'partner';
+  action_type: QuestActionType;
   action_url: string | null;
   reward_points: number;
   object_id: string | null;
   npc_id: string | null;
   dialogs: DialogStep[];
   sort_order: number;
+  is_recurring: boolean;
+  hide_npc_on_complete: boolean;
+  prerequisite_quest_id: string | null;
+  available_from: string | null;
+  available_until: string | null;
+  reactivated_count: number;
   status: 'new' | 'accepted' | 'completed';
 };
 
@@ -52,13 +60,18 @@ export type QuestRow = {
   title: string;
   description: string;
   reward_text: string | null;
-  action_type: 'donate' | 'subscribe' | 'volunteer' | 'material' | 'partner';
+  action_type: QuestActionType;
   action_url: string | null;
   reward_points: number;
   object_id: string | null;
   npc_id: string | null;
   dialogs: DialogStep[];
   is_active: boolean;
+  is_recurring: boolean;
+  hide_npc_on_complete: boolean;
+  prerequisite_quest_id: string | null;
+  available_from: string | null;
+  available_until: string | null;
   sort_order: number;
   created_at: string;
 };
@@ -68,10 +81,14 @@ export type QuestRow = {
 export async function getAvailableQuests(userId?: string, npcId?: string): Promise<QuestWithStatus[]> {
   const supabase = (await createServerSupabaseClient()) as AnyClient;
 
+  const now = new Date().toISOString();
+
   let query = supabase
     .from('quests')
-    .select('id, title, description, reward_text, action_type, action_url, reward_points, object_id, npc_id, dialogs, sort_order')
+    .select('id, title, description, reward_text, action_type, action_url, reward_points, object_id, npc_id, dialogs, sort_order, is_recurring, hide_npc_on_complete, prerequisite_quest_id, available_from, available_until')
     .eq('is_active', true)
+    .or(`available_from.is.null,available_from.lte.${now}`)
+    .or(`available_until.is.null,available_until.gte.${now}`)
     .order('sort_order');
 
   if (npcId) {
@@ -83,20 +100,36 @@ export async function getAvailableQuests(userId?: string, npcId?: string): Promi
   if (!quests?.length) return [];
 
   if (!userId) {
-    return quests.map(q => ({ ...q, status: 'new' as const }));
+    return quests.map(q => ({
+      ...q,
+      reactivated_count: 0,
+      status: 'new' as const,
+    }));
   }
 
   const { data: userQuests } = await supabase
     .from('user_quests')
-    .select('quest_id, status')
-    .eq('user_id', userId) as { data: { quest_id: string; status: string }[] | null };
+    .select('quest_id, status, reactivated_count')
+    .eq('user_id', userId) as { data: { quest_id: string; status: string; reactivated_count: number }[] | null };
 
-  const statusMap = new Map((userQuests ?? []).map(uq => [uq.quest_id, uq.status]));
+  const statusMap = new Map((userQuests ?? []).map(uq => [uq.quest_id, uq]));
+  const completedIds = new Set(
+    (userQuests ?? []).filter(uq => uq.status === 'completed').map(uq => uq.quest_id)
+  );
 
-  return quests.map(q => ({
-    ...q,
-    status: (statusMap.get(q.id) ?? 'new') as QuestWithStatus['status'],
-  }));
+  return quests
+    .filter(q => {
+      if (!q.prerequisite_quest_id) return true;
+      return completedIds.has(q.prerequisite_quest_id);
+    })
+    .map(q => {
+      const uq = statusMap.get(q.id);
+      return {
+        ...q,
+        reactivated_count: uq?.reactivated_count ?? 0,
+        status: (uq?.status ?? 'new') as QuestWithStatus['status'],
+      };
+    });
 }
 
 // ─── Public: accept quest ────────────────────────────────────────────────────
@@ -134,16 +167,6 @@ export async function completeQuest(questId: string): Promise<{ error?: string }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Требуется авторизация' };
 
-  const { data: userQuest } = await supabase
-    .from('user_quests')
-    .select('status')
-    .eq('user_id', user.id)
-    .eq('quest_id', questId)
-    .maybeSingle() as { data: { status: string } | null };
-
-  if (!userQuest) return { error: 'Задание не найдено' };
-  if (userQuest.status === 'completed') return {};
-
   const { data: quest } = await supabase
     .from('quests')
     .select('reward_points')
@@ -152,19 +175,119 @@ export async function completeQuest(questId: string): Promise<{ error?: string }
 
   if (!quest) return { error: 'Квест не найден' };
 
-  const { error } = await supabase
+  // Upsert: создаём запись если её нет (dialog-квесты могут завершаться без предварительного acceptQuest)
+  const { data: existing } = await supabase
     .from('user_quests')
-    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .select('status')
     .eq('user_id', user.id)
-    .eq('quest_id', questId);
+    .eq('quest_id', questId)
+    .maybeSingle() as { data: { status: string } | null };
 
-  if (error) return { error: 'Не удалось завершить задание' };
+  if (existing?.status === 'completed') return {};
+
+  await supabase
+    .from('user_quests')
+    .upsert(
+      { user_id: user.id, quest_id: questId, status: 'completed', completed_at: new Date().toISOString() },
+      { onConflict: 'user_id,quest_id' },
+    );
 
   if (quest.reward_points > 0) {
     await awardPoints(user.id, quest.reward_points);
   }
 
   return {};
+}
+
+// ─── Service-role: авто-завершение квестов по действию ───────────────────────
+
+export async function autoCompleteQuestsOnAction(
+  userId: string,
+  actionType: string,
+  objectId?: string | null,
+): Promise<void> {
+  const supabase = (await createServiceSupabaseClient()) as AnyClient;
+
+  // Для subscribe-типа: включаем 'offered' (= recurring квест после сброса)
+  const statusFilter = actionType === 'subscribe' ? ['accepted', 'offered'] : ['accepted'];
+
+  const { data: userQuests } = await supabase
+    .from('user_quests')
+    .select('quest_id, quests!inner(action_type, object_id, reward_points)')
+    .eq('user_id', userId)
+    .in('status', statusFilter)
+    .eq('quests.action_type', actionType) as {
+      data: Array<{
+        quest_id: string;
+        quests: { action_type: string; object_id: string | null; reward_points: number };
+      }> | null;
+    };
+
+  if (!userQuests?.length) return;
+
+  for (const uq of userQuests) {
+    const questObjectId = uq.quests.object_id;
+    // Если квест привязан к объекту — должен совпасть; квест без object_id = любое действие
+    if (objectId && questObjectId && questObjectId !== objectId) continue;
+
+    const { error } = await supabase
+      .from('user_quests')
+      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('quest_id', uq.quest_id)
+      .eq('status', 'accepted');
+
+    if (!error && uq.quests.reward_points > 0) {
+      await awardPoints(userId, uq.quests.reward_points);
+    }
+  }
+}
+
+// ─── Service-role: сброс recurring-квестов при лапсе подписки ────────────────
+
+export async function resetRecurringQuestsOnSubscriptionLapse(
+  userId: string,
+  objectId?: string | null,
+): Promise<void> {
+  const supabase = (await createServiceSupabaseClient()) as AnyClient;
+
+  const { data: completedRecurring } = await supabase
+    .from('user_quests')
+    .select('quest_id, quests!inner(action_type, is_recurring, object_id)')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .eq('quests.action_type', 'subscribe')
+    .eq('quests.is_recurring', true) as {
+      data: Array<{
+        quest_id: string;
+        quests: { action_type: string; is_recurring: boolean; object_id: string | null };
+      }> | null;
+    };
+
+  if (!completedRecurring?.length) return;
+
+  for (const uq of completedRecurring) {
+    const questObjectId = uq.quests.object_id;
+    if (objectId && questObjectId && questObjectId !== objectId) continue;
+
+    // Читаем текущий счётчик чтобы атомарно инкрементировать
+    const { data: current } = await supabase
+      .from('user_quests')
+      .select('reactivated_count')
+      .eq('user_id', userId)
+      .eq('quest_id', uq.quest_id)
+      .maybeSingle() as { data: { reactivated_count: number } | null };
+
+    await supabase
+      .from('user_quests')
+      .update({
+        status: 'offered',
+        completed_at: null,
+        reactivated_count: (current?.reactivated_count ?? 0) + 1,
+      })
+      .eq('user_id', userId)
+      .eq('quest_id', uq.quest_id);
+  }
 }
 
 // ─── Admin helpers ───────────────────────────────────────────────────────────
@@ -189,23 +312,33 @@ const dialogChoiceSchema = z.object({
   next: z.enum(['next', 'accept', 'decline']),
 });
 
+const textOrDocSchema = z.union([
+  z.string().min(1),
+  z.record(z.string(), z.unknown()),
+]);
+
 const dialogStepSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('text'), text: z.string().min(1) }),
-  z.object({ type: z.literal('choice'), text: z.string().min(1), choices: z.array(dialogChoiceSchema).min(1) }),
+  z.object({ type: z.literal('text'), text: textOrDocSchema }),
+  z.object({ type: z.literal('choice'), text: textOrDocSchema, choices: z.array(dialogChoiceSchema).min(1) }),
 ]);
 
 const questBodySchema = z.object({
-  title:         z.string().min(1).max(200),
-  description:   z.string().min(0).default(''),
-  reward_text:   z.string().max(300).nullable().optional(),
-  action_type:   z.enum(['donate','subscribe','volunteer','material','partner']),
-  action_url:    z.string().max(500).nullable().optional(),
-  reward_points: z.number().int().min(0),
-  object_id:     z.string().uuid().nullable().optional(),
-  npc_id:        z.string().uuid().nullable().optional(),
-  dialogs:       z.array(dialogStepSchema).optional(),
-  is_active:     z.boolean().optional(),
-  sort_order:    z.number().int().min(0).optional(),
+  title:                  z.string().min(1).max(200),
+  description:            z.string().min(0).default(''),
+  reward_text:            z.string().max(300).nullable().optional(),
+  action_type:            z.enum(['donate','subscribe','volunteer','material','partner','dialog']),
+  action_url:             z.string().max(500).nullable().optional(),
+  reward_points:          z.number().int().min(0),
+  object_id:              z.string().uuid().nullable().optional(),
+  npc_id:                 z.string().uuid().nullable().optional(),
+  dialogs:                z.array(dialogStepSchema).optional(),
+  is_active:              z.boolean().optional(),
+  is_recurring:           z.boolean().optional(),
+  hide_npc_on_complete:   z.boolean().optional(),
+  prerequisite_quest_id:  z.string().uuid().nullable().optional(),
+  available_from:         z.string().nullable().optional(),
+  available_until:        z.string().nullable().optional(),
+  sort_order:             z.number().int().min(0).optional(),
 });
 
 export async function adminCreateQuest(

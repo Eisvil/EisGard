@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 import { awardPoints } from '@/lib/points/awardPoints';
 import { logAdminAction } from '@/lib/admin/auditLog';
+import { autoCompleteQuestsOnAction } from '@/app/actions/quests';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -95,6 +96,11 @@ export async function PATCH(
   // Начисляем баллы пользователю
   if (app.user_id && pts > 0) {
     await awardPoints(app.user_id, pts);
+  }
+
+  // Авто-завершить квесты типа 'material'
+  if (app.user_id) {
+    autoCompleteQuestsOnAction(app.user_id, 'material').catch(() => {});
   }
 
   await logAdminAction(actorId, 'award_points_material', 'material_application', id, {

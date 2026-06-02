@@ -4,6 +4,14 @@ import { User } from 'lucide-react';
 import Link from 'next/link';
 import { TutorialStep } from '@/lib/tutorial/steps';
 import type { QuestWithStatus, DialogStep, DialogChoice } from '@/app/actions/quests';
+import { TiptapRenderer } from '@/components/features/TiptapRenderer';
+
+function renderNpcText(text: unknown, className = 'npc-text') {
+  if (text && typeof text === 'object') {
+    return <TiptapRenderer content={text as Record<string, unknown>} className={className} />;
+  }
+  return <p className={className}>{String(text ?? '')}</p>;
+}
 
 // ─── Tutorial props ───────────────────────────────────────────────────────────
 
@@ -32,6 +40,7 @@ type QuestProps = {
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
+  onCtaClick?: () => void;
   npcName?: string;
   npcPortraitUrl?: string;
 };
@@ -70,6 +79,7 @@ const ACTION_TYPE_LABELS: Record<QuestWithStatus['action_type'], string> = {
   volunteer: 'Записаться',
   material:  'Помочь материалами',
   partner:   'Стать партнёром',
+  dialog:    'Продолжить диалог',
 };
 
 function getEffectiveDialogs(quest: QuestWithStatus): DialogStep[] {
@@ -86,7 +96,7 @@ export default function NPCDialog(props: NPCDialogProps) {
 
   // ── Quest mode ────────────────────────────────────────────────────────────
   if (props.mode === 'quest') {
-    const { quest, questIndex, totalQuests, dialogIndex, onNextDialog, onChoose, onClose, onPrev, onNext } = props;
+    const { quest, questIndex, totalQuests, dialogIndex, onNextDialog, onChoose, onClose, onPrev, onNext, onCtaClick } = props;
     const dialogs = getEffectiveDialogs(quest);
     const currentDialog = dialogs[dialogIndex] ?? null;
     const isLastDialog = dialogIndex >= dialogs.length - 1;
@@ -99,7 +109,7 @@ export default function NPCDialog(props: NPCDialogProps) {
 
           <div className="npc-speech">
             <p className="npc-title">{quest.title}</p>
-            <p className="npc-text">{currentDialog?.text ?? quest.description}</p>
+            {renderNpcText(currentDialog?.text ?? quest.description)}
 
             {quest.reward_text && isLastDialog && (
               <p className="npc-reward-hint">🏅 {quest.reward_text}</p>
@@ -118,15 +128,31 @@ export default function NPCDialog(props: NPCDialogProps) {
                 {quest.status === 'completed' ? (
                   <>
                     <span className="npc-completed-badge">Выполнено ✓</span>
+                    {hasMore && questIndex > 0 && (
+                      <button className="npc-btn-secondary" onClick={onPrev}>←</button>
+                    )}
+                    {hasMore && questIndex < totalQuests - 1 && (
+                      <button className="npc-btn-secondary" onClick={onNext}>→</button>
+                    )}
                     <button className="npc-btn-secondary" onClick={onClose}>Закрыть</button>
                   </>
-                ) : quest.status === 'accepted' ? (
+                ) : quest.status === 'accepted' && quest.action_type !== 'dialog' ? (
+                  // ── CTA кнопка (только для не-dialog типов) ──────────────
                   <>
-                    {quest.action_url && (
+                    {(quest.action_type === 'donate' || quest.action_type === 'subscribe') && onCtaClick ? (
+                      // Открываем форму поддержки прямо в текущем контексте
+                      <button
+                        className="primary-button npc-btn-cta"
+                        onClick={() => { onCtaClick(); onClose(); }}
+                      >
+                        {ACTION_TYPE_LABELS[quest.action_type]}
+                      </button>
+                    ) : quest.action_url ? (
+                      // Для volunteer/material/partner — переход на страницу
                       <Link href={quest.action_url} className="primary-button npc-btn-cta" onClick={onClose}>
                         {ACTION_TYPE_LABELS[quest.action_type]}
                       </Link>
-                    )}
+                    ) : null}
                     <button className="npc-btn-skip" onClick={onClose}>Закрыть</button>
                   </>
                 ) : currentDialog?.type === 'choice' ? (
@@ -142,8 +168,13 @@ export default function NPCDialog(props: NPCDialogProps) {
                       </button>
                     ))}
                   </div>
+                ) : isLastDialog && quest.action_type === 'dialog' ? (
+                  // ── Последний шаг dialog-квеста → Далее = правильный ─────
+                  <button className="primary-button npc-btn-next" onClick={onNextDialog}>
+                    Далее
+                  </button>
                 ) : isLastDialog ? (
-                  // ── Last text step → show accept/decline ──────────────────
+                  // ── Последний шаг обычного квеста → Принять / Отложить ───
                   <>
                     {hasMore && questIndex > 0 && (
                       <button className="npc-btn-secondary" onClick={onPrev}>←</button>
@@ -159,7 +190,7 @@ export default function NPCDialog(props: NPCDialogProps) {
                     )}
                   </>
                 ) : (
-                  // ── Mid text step → Далее ─────────────────────────────────
+                  // ── Промежуточный текстовый шаг ───────────────────────────
                   <>
                     <button className="primary-button npc-btn-next" onClick={onNextDialog}>
                       Далее

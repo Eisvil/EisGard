@@ -4,6 +4,9 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { uuidSchema } from '@/lib/utils/zod';
 import { rateLimit } from '@/lib/rateLimit';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyClient = any;
+
 const schema = z.object({
   org_name:      z.string().min(2).max(200),
   inn:           z.string().regex(/^\d{10}(\d{2})?$/).optional(),
@@ -44,7 +47,10 @@ export async function POST(request: NextRequest) {
     contact_name, contact_email, contact_phone, object_id,
   } = parsed.data;
 
-  const supabase = await createServerSupabaseClient();
+  const supabase = (await createServerSupabaseClient()) as AnyClient;
+
+  // Если пользователь авторизован — сохраняем user_id для авто-завершения квестов
+  const { data: { user } } = await supabase.auth.getUser();
 
   const { data: rawApp, error: insertError } = await supabase
     .from('partner_applications')
@@ -57,6 +63,7 @@ export async function POST(request: NextRequest) {
       contact_email,
       contact_phone: contact_phone ?? null,
       object_id:     object_id ?? null,
+      user_id:       user?.id ?? null,
       status:        'pending',
     })
     .select('id, status')

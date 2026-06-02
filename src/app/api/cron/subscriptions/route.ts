@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
 import { awardPoints } from '@/lib/points/awardPoints';
+import { resetRecurringQuestsOnSubscriptionLapse } from '@/app/actions/quests';
 
 type AnyClient = any;
 
@@ -132,6 +133,8 @@ export async function GET(request: NextRequest) {
       if (newAttempts >= 2) {
         updateData.status = 'paused';
         paused++;
+        // Сбрасываем recurring-квесты при паузе подписки
+        resetRecurringQuestsOnSubscriptionLapse(sub.user_id, sub.object_id).catch(() => {});
       }
       await supabase.from('subscriptions').update(updateData).eq('id', sub.id);
 

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
 import { awardPoints } from '@/lib/points/awardPoints';
 import { createServiceSupabaseClient } from '@/lib/supabase/server';
+import { autoCompleteQuestsOnAction } from '@/app/actions/quests';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -72,6 +73,11 @@ export async function PATCH(
       .from('volunteer_applications')
       .update({ status, admin_note: admin_note ?? null })
       .eq('id', id);
+
+    // Авто-завершить квесты типа 'volunteer' при одобрении
+    if (status === 'approved') {
+      autoCompleteQuestsOnAction(app.user_id, 'volunteer').catch(() => {});
+    }
 
     return NextResponse.json({ data: { updated: true, points_awarded: 0 } });
   }

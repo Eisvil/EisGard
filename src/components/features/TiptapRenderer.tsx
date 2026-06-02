@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -23,6 +24,15 @@ export function TiptapRenderer({ content, className }: TiptapRendererProps) {
     editable: false,
     immediatelyRender: false,
   });
+
+  // Синхронизируем содержимое при смене content prop.
+  // useEditor принимает content только как начальное значение и не реагирует
+  // на изменения prop — необходим явный вызов setContent.
+  useEffect(() => {
+    if (editor && content) {
+      editor.commands.setContent(content);
+    }
+  }, [editor, content]);
 
   if (!content) return null;
 

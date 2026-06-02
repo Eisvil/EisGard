@@ -37,7 +37,7 @@ export default async function NpcAdminPage() {
       .order('sort_order'),
     supabase
       .from('objects')
-      .select('id, name')
+      .select('id, name, slug')
       .order('name'),
   ]);
 

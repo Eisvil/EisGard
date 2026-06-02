@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/admin/requireAdmin';
+import { autoCompleteQuestsOnAction } from '@/app/actions/quests';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -46,7 +47,7 @@ export async function PATCH(
   // Загружаем заявку
   const { data: app, error: appErr } = await supabase
     .from('partner_applications')
-    .select('id, status, org_name, support_type, object_id, logo_url, partner_website_url')
+    .select('id, status, org_name, support_type, object_id, logo_url, partner_website_url, user_id')
     .eq('id', id)
     .maybeSingle() as {
     data: {
@@ -57,6 +58,7 @@ export async function PATCH(
       object_id: string | null;
       logo_url: string | null;
       partner_website_url: string | null;
+      user_id: string | null;
     } | null;
     error: unknown;
   };
@@ -119,6 +121,11 @@ export async function PATCH(
       await supabase.from('object_partners').insert(partnerPayload);
     }
     partnerPublished = true;
+  }
+
+  // Авто-завершить квесты типа 'partner' при одобрении
+  if (status === 'approved' && app.user_id) {
+    autoCompleteQuestsOnAction(app.user_id, 'partner').catch(() => {});
   }
 
   return NextResponse.json({ data: { updated: true, partner_published: partnerPublished } });

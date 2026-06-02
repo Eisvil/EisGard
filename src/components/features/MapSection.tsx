@@ -130,7 +130,12 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
   const [chronicles, setChronicles] = useState<ChronicleEvent[]>(initialChronicle);
   const [userProfile, setUserProfile] = useState<UserProfile | undefined>(initialProfile);
   const [userId, setUserId] = useState<string | undefined>(undefined);
+  const [completedNpcIds, setCompletedNpcIds] = useState<string[]>([]);
+  const [hiddenNpcIds, setHiddenNpcIds] = useState<string[]>([]);
+  const [blockedNpcIds, setBlockedNpcIds] = useState<string[]>([]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sbRef = useRef<any>(null);
   const mapCanvasRef = useRef<HTMLDivElement>(null);
   const mapImageRef = useRef<HTMLImageElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -207,9 +212,60 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
     };
   }, [prependChronicle]);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function doRefreshQuestState(sb: any, uid: string) {
+    const [{ data: allActiveQuests }, { data: completedUserQuests }, { data: hidingQuests }] = await Promise.all([
+      sb.from('quests').select('id, npc_id, prerequisite_quest_id').eq('is_active', true),
+      sb.from('user_quests').select('quest_id').eq('user_id', uid).eq('status', 'completed'),
+      sb.from('user_quests')
+        .select('quests!inner(npc_id, hide_npc_on_complete)')
+        .eq('user_id', uid)
+        .eq('status', 'completed')
+        .eq('quests.hide_npc_on_complete', true),
+    ]);
+
+    const completedQuestIds = new Set(
+      (completedUserQuests ?? []).map((q: { quest_id: string }) => q.quest_id)
+    );
+
+    // Группируем квесты по NPC и отслеживаем доступность каждого
+    const questsByNpc: Record<string, string[]> = {};
+    const availableNpcIds = new Set<string>();
+
+    for (const q of (allActiveQuests ?? []) as { id: string; npc_id: string | null; prerequisite_quest_id: string | null }[]) {
+      if (!q.npc_id) continue;
+      if (!questsByNpc[q.npc_id]) questsByNpc[q.npc_id] = [];
+      questsByNpc[q.npc_id].push(q.id);
+
+      // Квест доступен если нет prerequisite или он выполнен
+      const prereqOk = !q.prerequisite_quest_id || completedQuestIds.has(q.prerequisite_quest_id);
+      if (prereqOk) availableNpcIds.add(q.npc_id);
+    }
+
+    // NPC у которых все квесты заблокированы невыполненным prerequisite
+    const blocked = Object.keys(questsByNpc).filter(npcId => !availableNpcIds.has(npcId));
+    setBlockedNpcIds(blocked);
+
+    // NPC у которых все активные квесты выполнены
+    const fullyCompleted = Object.entries(questsByNpc)
+      .filter(([, ids]) => ids.length > 0 && ids.every(id => completedQuestIds.has(id)))
+      .map(([npcId]) => npcId);
+    setCompletedNpcIds(fullyCompleted);
+
+    const hideIds = [...new Set(
+      (hidingQuests ?? [])
+        .map((uq: { quests: { npc_id: string | null } }) => uq.quests?.npc_id)
+        .filter(Boolean) as string[]
+    )];
+    setHiddenNpcIds(hideIds);
+  }
+
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = createBrowserSupabaseClient() as any;
+    sbRef.current = sb;
+    let realtimeChannel: ReturnType<typeof sb.channel> | null = null;
+
     sb.auth.getUser().then(async ({ data: { user } }: { data: { user: { id: string } | null } }) => {
       if (!user) { setUserProfile(undefined); setUserId(undefined); return; }
       setUserId(user.id);
@@ -229,7 +285,24 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
           avatar_url: p.avatar_url ?? null,
         });
       }
+
+      await doRefreshQuestState(sb, user.id);
+
+      // Realtime: обновляем badge и видимость NPC при изменении user_quests
+      realtimeChannel = sb
+        .channel(`user-quests-${user.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'user_quests',
+          filter: `user_id=eq.${user.id}`,
+        }, () => { doRefreshQuestState(sb, user.id); })
+        .subscribe();
     });
+
+    return () => {
+      if (realtimeChannel) sb.removeChannel(realtimeChannel);
+    };
   }, []);
 
   const selected = selectedId ? objects.find(o => o.id === selectedId) ?? null : null;
@@ -452,8 +525,8 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
               );
             })}
 
-            {/* NPC персонажи — скрыты во время туториала */}
-            {!tutorialActive && npcs.map(npc => (
+            {/* NPC персонажи — скрыты во время туториала или когда hide_npc_on_complete активен */}
+            {!tutorialActive && npcs.filter(npc => !hiddenNpcIds.includes(npc.id)).map(npc => (
               <button
                 key={npc.id}
                 type="button"
@@ -474,7 +547,7 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
                 ) : (
                   <span className="npc-hotspot-fallback" aria-hidden="true">👤</span>
                 )}
-                {npcIdsWithQuests.includes(npc.id) && (
+                {npcIdsWithQuests.includes(npc.id) && !completedNpcIds.includes(npc.id) && !hiddenNpcIds.includes(npc.id) && !blockedNpcIds.includes(npc.id) && (
                   <span className="npc-hotspot-badge" aria-label="Доступны задания">!</span>
                 )}
                 <span className="npc-hotspot-label">{npc.name}</span>
@@ -727,6 +800,17 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
             npcPortraitUrl={activeNpc.portrait_url ?? ''}
             userId={userId}
             onClose={() => setQuestOpenNpcId(null)}
+            onAllCompleted={(shouldHide) => {
+              if (!questOpenNpcId) return;
+              setCompletedNpcIds(prev => [...new Set([...prev, questOpenNpcId])]);
+              if (shouldHide) setHiddenNpcIds(prev => [...new Set([...prev, questOpenNpcId])]);
+            }}
+            onOpenSupport={() => setShowSupportModal(true)}
+            onQuestChanged={async () => {
+              if (sbRef.current && userId) {
+                await doRefreshQuestState(sbRef.current, userId);
+              }
+            }}
           />
         );
       })()}

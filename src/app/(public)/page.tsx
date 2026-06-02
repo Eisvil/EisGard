@@ -44,7 +44,9 @@ export default async function HomePage() {
     supabase.rpc('get_volunteer_days_total'),
     supabase.from('objects').select('id', { count: 'exact', head: true }).in('status', ['done', 'working']),
     supabase.from('npcs').select('id, name, portrait_url, position_x, position_y').eq('is_active', true).order('sort_order'),
-    supabase.from('quests').select('npc_id').eq('is_active', true),
+    supabase.from('quests').select('npc_id').eq('is_active', true)
+      .or(`available_from.is.null,available_from.lte.${new Date().toISOString()}`)
+      .or(`available_until.is.null,available_until.gte.${new Date().toISOString()}`),
   ]);
 
   const siteStats: SiteStats = {

@@ -10,9 +10,10 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 type TiptapEditorProps = {
   value: Record<string, unknown>;
   onChange: (json: Record<string, unknown>) => void;
+  simple?: boolean;
 };
 
-export function TiptapEditor({ value, onChange }: TiptapEditorProps) {
+export function TiptapEditor({ value, onChange, simple }: TiptapEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -100,16 +101,20 @@ export function TiptapEditor({ value, onChange }: TiptapEditorProps) {
           className={editor.isActive('link') ? 'is-active' : ''}
           onClick={setLink}
         >🔗</button>
-        <button
-          type="button"
-          title="Изображение"
-          onClick={insertImage}
-        >🖼</button>
-        <button
-          type="button"
-          title="YouTube видео"
-          onClick={insertYoutube}
-        >▶</button>
+        {!simple && (
+          <>
+            <button
+              type="button"
+              title="Изображение"
+              onClick={insertImage}
+            >🖼</button>
+            <button
+              type="button"
+              title="YouTube видео"
+              onClick={insertYoutube}
+            >▶</button>
+          </>
+        )}
         <button
           type="button"
           title="Маркированный список"

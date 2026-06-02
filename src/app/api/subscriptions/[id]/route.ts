@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { resetRecurringQuestsOnSubscriptionLapse } from '@/app/actions/quests';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
-type SubscriptionRow = { id: string; user_id: string; status: string };
+type SubscriptionRow = { id: string; user_id: string; status: string; object_id: string | null };
 
 export async function DELETE(
   _request: NextRequest,
@@ -22,7 +24,7 @@ export async function DELETE(
 
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('id, user_id, status')
+    .select('id, user_id, status, object_id')
     .eq('id', id)
     .maybeSingle() as { data: SubscriptionRow | null };
 
@@ -51,6 +53,9 @@ export async function DELETE(
     .from('subscriptions')
     .update({ status: 'cancelled' })
     .eq('id', id);
+
+  // Сбрасываем recurring-квесты типа 'subscribe' при отмене
+  resetRecurringQuestsOnSubscriptionLapse(user.id, subscription.object_id).catch(() => {});
 
   return NextResponse.json({ data: { cancelled: true } });
 }

@@ -3063,6 +3063,12 @@
   margin: 0;
   line-height: 1.55;
 }
+.npc-text p          { margin: 0; font-family: inherit; font-size: inherit; color: inherit; }
+.npc-text p + p      { margin-top: 6px; }
+.npc-text strong     { font-weight: 700; }
+.npc-text em         { font-style: italic; }
+.npc-text ul, .npc-text ol { padding-left: 20px; margin: 4px 0; }
+.npc-text a          { color: var(--olive-dark); text-decoration: underline; }
 
 /* Footer: dots + buttons */
 .npc-footer {
