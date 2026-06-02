@@ -5,6 +5,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { Button } from '@/components/ui/button';
 import { ObjectIcon } from '@/lib/constants/objectIcons';
 import { Upload, MapPin } from 'lucide-react';
+import { adminUpdateNpc } from '@/app/actions/quests';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyClient = any;
@@ -18,6 +19,14 @@ type ObjRow = {
   map_position_y: number | null;
 };
 
+type NpcRow = {
+  id: string;
+  name: string;
+  portrait_url: string | null;
+  position_x: number | null;
+  position_y: number | null;
+};
+
 type Position = { x: number; y: number };
 
 export function MapConstructor() {
@@ -25,6 +34,11 @@ export function MapConstructor() {
   const [mapUrl, setMapUrl] = useState('/map/settlement.png');
   const [positions, setPositions] = useState<Record<string, Position>>({});
   const [dragging, setDragging] = useState<string | null>(null);
+
+  const [npcs, setNpcs] = useState<NpcRow[]>([]);
+  const [npcPositions, setNpcPositions] = useState<Record<string, Position>>({});
+  const [draggingNpc, setDraggingNpc] = useState<string | null>(null);
+
   const [uploading, setUploading] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -34,7 +48,7 @@ export function MapConstructor() {
     const supabase = createBrowserSupabaseClient() as AnyClient;
 
     async function load() {
-      const [objRes, settingsRes] = await Promise.all([
+      const [objRes, settingsRes, npcRes] = await Promise.all([
         supabase
           .from('objects')
           .select('id, name, icon_key, status, map_position_x, map_position_y')
@@ -45,6 +59,11 @@ export function MapConstructor() {
           .select('value')
           .eq('key', 'map_image_url')
           .maybeSingle(),
+        supabase
+          .from('npcs')
+          .select('id, name, portrait_url, position_x, position_y')
+          .eq('is_active', true)
+          .order('sort_order'),
       ]);
 
       if (objRes.data) {
@@ -61,10 +80,23 @@ export function MapConstructor() {
       if (settingsRes.data?.value) {
         try { setMapUrl(JSON.parse(settingsRes.data.value as string) as string); } catch { /* ignore */ }
       }
+
+      if (npcRes.data) {
+        setNpcs(npcRes.data as NpcRow[]);
+        const npcPos: Record<string, Position> = {};
+        (npcRes.data as NpcRow[]).forEach((n) => {
+          if (n.position_x != null && n.position_y != null) {
+            npcPos[n.id] = { x: Number(n.position_x), y: Number(n.position_y) };
+          }
+        });
+        setNpcPositions(npcPos);
+      }
     }
 
     void load();
   }, []);
+
+  // ── Object drag helpers ────────────────────────────────────────────────────
 
   async function savePosition(id: string, pos: Position) {
     await fetch(`/api/admin/objects/${id}`, {
@@ -89,28 +121,75 @@ export function MapConstructor() {
     setDragging(id);
   }
 
-  function handleMouseMove(e: React.MouseEvent) {
-    if (!dragging) return;
+  // ── NPC drag helpers ───────────────────────────────────────────────────────
+
+  async function saveNpcPosition(id: string, pos: Position) {
+    await adminUpdateNpc(id, {
+      position_x: Math.round(pos.x * 100) / 100,
+      position_y: Math.round(pos.y * 100) / 100,
+    });
+  }
+
+  function handleNpcMouseDown(e: React.MouseEvent, id: string) {
+    e.preventDefault();
     const map = mapRef.current;
     if (!map) return;
     const rect = map.getBoundingClientRect();
-    const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100 - dragOffset.current.x));
-    const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100 - dragOffset.current.y));
-    setPositions((prev) => ({ ...prev, [dragging]: { x, y } }));
+    const curX = ((e.clientX - rect.left) / rect.width) * 100;
+    const curY = ((e.clientY - rect.top) / rect.height) * 100;
+    const pos = npcPositions[id] ?? { x: 50, y: 50 };
+    dragOffset.current = { x: curX - pos.x, y: curY - pos.y };
+    setDraggingNpc(id);
+  }
+
+  // ── Shared move / up ───────────────────────────────────────────────────────
+
+  function handleMouseMove(e: React.MouseEvent) {
+    const map = mapRef.current;
+    if (!map) return;
+    const rect = map.getBoundingClientRect();
+
+    if (dragging) {
+      const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100 - dragOffset.current.x));
+      const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100 - dragOffset.current.y));
+      setPositions((prev) => ({ ...prev, [dragging]: { x, y } }));
+    }
+
+    if (draggingNpc) {
+      const x = Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100 - dragOffset.current.x));
+      const y = Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100 - dragOffset.current.y));
+      setNpcPositions((prev) => ({ ...prev, [draggingNpc]: { x, y } }));
+    }
   }
 
   function handleMouseUp() {
-    if (!dragging) return;
-    const pos = positions[dragging];
-    if (pos) void savePosition(dragging, pos);
-    setDragging(null);
+    if (dragging) {
+      const pos = positions[dragging];
+      if (pos) void savePosition(dragging, pos);
+      setDragging(null);
+    }
+    if (draggingNpc) {
+      const pos = npcPositions[draggingNpc];
+      if (pos) void saveNpcPosition(draggingNpc, pos);
+      setDraggingNpc(null);
+    }
   }
+
+  // ── Add to map ─────────────────────────────────────────────────────────────
 
   async function handleAddToMap(id: string) {
     const pos = { x: 50, y: 50 };
     setPositions((prev) => ({ ...prev, [id]: pos }));
     await savePosition(id, pos);
   }
+
+  async function handleAddNpcToMap(id: string) {
+    const pos = { x: 50, y: 50 };
+    setNpcPositions((prev) => ({ ...prev, [id]: pos }));
+    await saveNpcPosition(id, pos);
+  }
+
+  // ── Map image upload ───────────────────────────────────────────────────────
 
   async function handleMapImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -129,13 +208,18 @@ export function MapConstructor() {
 
   const onMap = objects.filter((o) => positions[o.id] != null);
   const offMap = objects.filter((o) => positions[o.id] == null);
+  const onMapNpcs = npcs.filter((n) => npcPositions[n.id] != null);
+  const offMapNpcs = npcs.filter((n) => npcPositions[n.id] == null);
+  const anyDragging = dragging !== null || draggingNpc !== null;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Конструктор карты</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Перетащите иконки объектов на карту.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Перетащите иконки объектов и NPC-персонажей на карту.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -161,7 +245,7 @@ export function MapConstructor() {
       <div
         ref={mapRef}
         className="relative w-full rounded-md border overflow-hidden bg-muted select-none"
-        style={{ aspectRatio: '16/9', cursor: dragging ? 'grabbing' : 'default' }}
+        style={{ aspectRatio: '16/9', cursor: anyDragging ? 'grabbing' : 'default' }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
@@ -173,6 +257,8 @@ export function MapConstructor() {
           className="w-full h-full object-cover pointer-events-none"
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
+
+        {/* Objects on map */}
         {onMap.map((obj) => {
           const pos = positions[obj.id]!;
           return (
@@ -184,7 +270,7 @@ export function MapConstructor() {
                 top: `${pos.y}%`,
                 transform: 'translate(-50%, -50%)',
                 cursor: dragging === obj.id ? 'grabbing' : 'grab',
-                pointerEvents: dragging && dragging !== obj.id ? 'none' : 'auto',
+                pointerEvents: anyDragging && dragging !== obj.id ? 'none' : 'auto',
                 zIndex: dragging === obj.id ? 10 : 1,
               }}
               onMouseDown={(e) => handleMouseDown(e, obj.id)}
@@ -198,12 +284,51 @@ export function MapConstructor() {
             </div>
           );
         })}
+
+        {/* NPCs on map */}
+        {onMapNpcs.map((npc) => {
+          const pos = npcPositions[npc.id]!;
+          const isDragging = draggingNpc === npc.id;
+          return (
+            <div
+              key={`npc-${npc.id}`}
+              style={{
+                position: 'absolute',
+                left: `${pos.x}%`,
+                top: `${pos.y}%`,
+                transform: 'translate(-50%, -50%)',
+                cursor: isDragging ? 'grabbing' : 'grab',
+                pointerEvents: anyDragging && !isDragging ? 'none' : 'auto',
+                zIndex: isDragging ? 10 : 2,
+              }}
+              onMouseDown={(e) => handleNpcMouseDown(e, npc.id)}
+            >
+              <div className="flex flex-col items-center gap-0.5">
+                {npc.portrait_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={npc.portrait_url}
+                    alt={npc.name}
+                    className="w-10 h-10 rounded-full border-2 border-yellow-400 shadow object-cover pointer-events-none"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full border-2 border-yellow-400 bg-stone-700 flex items-center justify-center text-lg shadow pointer-events-none">
+                    👤
+                  </div>
+                )}
+                <span className="text-xs font-medium text-yellow-200 bg-black/60 rounded px-1 whitespace-nowrap pointer-events-none">
+                  {npc.name}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Off-map objects — strip below the map */}
+      {/* Off-map objects */}
       {offMap.length > 0 && (
         <div className="rounded-md border bg-background p-3">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Не на карте</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Объекты — не на карте</p>
           <div className="flex flex-wrap gap-2">
             {offMap.map((obj) => (
               <button
@@ -221,9 +346,35 @@ export function MapConstructor() {
         </div>
       )}
 
-      {objects.length === 0 && (
+      {/* Off-map NPCs */}
+      {offMapNpcs.length > 0 && (
+        <div className="rounded-md border bg-background p-3">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">NPC — не на карте</p>
+          <div className="flex flex-wrap gap-2">
+            {offMapNpcs.map((npc) => (
+              <button
+                key={npc.id}
+                onClick={() => void handleAddNpcToMap(npc.id)}
+                title="Добавить на карту"
+                className="flex items-center gap-1.5 rounded-full border border-yellow-300 bg-yellow-50 hover:bg-yellow-100 px-3 py-1 text-sm transition-colors"
+              >
+                {npc.portrait_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={npc.portrait_url} alt="" className="w-5 h-5 rounded-full object-cover" />
+                ) : (
+                  <span>👤</span>
+                )}
+                {npc.name}
+                <MapPin size={12} className="text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {objects.length === 0 && npcs.length === 0 && (
         <p className="text-sm text-muted-foreground italic">
-          Нет опубликованных объектов. Создайте объект и смените статус с «Черновик».
+          Нет опубликованных объектов и персонажей.
         </p>
       )}
     </div>

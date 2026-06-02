@@ -689,6 +689,7 @@ export function SettingsManager({
             <StaticPagesEditor />
           </div>
         </TabsContent>
+
       </Tabs>
 
       {/* Dialog создания/редактирования титула */}

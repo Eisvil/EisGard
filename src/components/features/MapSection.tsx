@@ -10,6 +10,7 @@ import { formatMoney as _formatMoney, getProgress as _getProgress } from '@/lib/
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 import { SupportModal } from '@/components/features/SupportModal';
 import TutorialOverlay, { replayTutorial } from '@/components/features/TutorialOverlay';
+import QuestOverlay from '@/components/features/QuestOverlay';
 
 export type ChronicleEvent = {
   id: string;
@@ -48,6 +49,14 @@ export type UserProfile = {
   donated_kopecks: number;
   volunteer_days: number;
   avatar_url?: string | null;
+};
+
+export type NpcRow = {
+  id: string;
+  name: string;
+  portrait_url: string | null;
+  position_x: number;
+  position_y: number;
 };
 
 export type SettlementObject = {
@@ -105,17 +114,21 @@ type MapSectionProps = {
   newsItems?: NewsItem[];
   siteStats?: SiteStats;
   userProfile?: UserProfile;
+  npcs?: NpcRow[];
+  npcIdsWithQuests?: string[];
 };
 
-export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile: initialProfile }: MapSectionProps) {
+export function MapSection({ objects, initialChronicle = [], newsItems = [], siteStats, userProfile: initialProfile, npcs = [], npcIdsWithQuests = [] }: MapSectionProps) {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeZone, setActiveZone] = useState<string>(ALL_ZONES);
   const [mapScale, setMapScale] = useState(1);
   const [toastMsg, setToastMsg] = useState('');
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const [questOpenNpcId, setQuestOpenNpcId] = useState<string | null>(null);
   const [chronicles, setChronicles] = useState<ChronicleEvent[]>(initialChronicle);
   const [userProfile, setUserProfile] = useState<UserProfile | undefined>(initialProfile);
+  const [userId, setUserId] = useState<string | undefined>(undefined);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mapCanvasRef = useRef<HTMLDivElement>(null);
   const mapImageRef = useRef<HTMLImageElement>(null);
@@ -197,7 +210,8 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const sb = createBrowserSupabaseClient() as any;
     sb.auth.getUser().then(async ({ data: { user } }: { data: { user: { id: string } | null } }) => {
-      if (!user) { setUserProfile(undefined); return; }
+      if (!user) { setUserProfile(undefined); setUserId(undefined); return; }
+      setUserId(user.id);
       const [{ data: p }, { data: donations }, { data: volunteer }] = await Promise.all([
         sb.from('profiles').select('full_name, points, avatar_url, title:title_id(name)').eq('id', user.id).maybeSingle(),
         sb.from('donations').select('amount_kopecks').eq('user_id', user.id).eq('status', 'confirmed'),
@@ -436,6 +450,35 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
                 </button>
               );
             })}
+
+            {/* NPC персонажи */}
+            {npcs.map(npc => (
+              <button
+                key={npc.id}
+                type="button"
+                className="npc-hotspot"
+                style={{ left: `${npc.position_x}%`, top: `${npc.position_y}%` }}
+                aria-label={npc.name}
+                title={npc.name}
+                onClick={() => setQuestOpenNpcId(npc.id)}
+              >
+                {npc.portrait_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={npc.portrait_url}
+                    alt={npc.name}
+                    className="npc-hotspot-img"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="npc-hotspot-fallback" aria-hidden="true">👤</span>
+                )}
+                {npcIdsWithQuests.includes(npc.id) && (
+                  <span className="npc-hotspot-badge" aria-label="Доступны задания">!</span>
+                )}
+                <span className="npc-hotspot-label">{npc.name}</span>
+              </button>
+            ))}
           </div>
 
           {/* Zoom */}
@@ -667,6 +710,21 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
 
       {/* NPC Tutorial */}
       <TutorialOverlay />
+
+      {/* NPC Quest Overlay */}
+      {questOpenNpcId && (() => {
+        const activeNpc = npcs.find(n => n.id === questOpenNpcId);
+        if (!activeNpc) return null;
+        return (
+          <QuestOverlay
+            npcId={questOpenNpcId}
+            npcName={activeNpc.name}
+            npcPortraitUrl={activeNpc.portrait_url ?? ''}
+            userId={userId}
+            onClose={() => setQuestOpenNpcId(null)}
+          />
+        );
+      })()}
     </>
   );
 }

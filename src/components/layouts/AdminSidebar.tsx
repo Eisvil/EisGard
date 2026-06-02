@@ -14,7 +14,7 @@ import {
   Newspaper,
   LogOut,
   Settings,
-  BookOpen,
+  ScrollText,
 } from 'lucide-react';
 import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
 
@@ -26,7 +26,7 @@ const NAV_ITEMS = [
   { href: '/admin/applications', label: 'Заявки',        icon: ClipboardList },
   { href: '/admin/news',         label: 'Новости',       icon: Newspaper },
   { href: '/admin/users',        label: 'Пользователи',  icon: Users },
-  { href: '/admin/tutorial',     label: 'Задания',        icon: BookOpen },
+  { href: '/admin/npc',          label: 'NPC / Квесты',   icon: ScrollText },
   { href: '/admin/settings',     label: 'Настройки',     icon: Settings },
 ];
 

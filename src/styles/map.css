@@ -272,6 +272,170 @@
   background: #806741;
 }
 
+/* ── NPC Ведун на карте ───────────────────────────────────────────────────── */
+
+.npc-hotspot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  background: rgba(255, 253, 248, .92);
+  box-shadow: 0 0 0 3px rgba(201, 166, 78, .22), 0 5px 14px rgba(68, 53, 27, .22);
+  cursor: pointer;
+  z-index: 20;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+
+.npc-hotspot:hover {
+  transform: translate(-50%, -50%) scale(1.10);
+  box-shadow: 0 0 0 5px rgba(201, 166, 78, .38), 0 6px 18px rgba(68, 53, 27, .28);
+}
+
+.npc-hotspot-img {
+  display: block;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.npc-hotspot-fallback {
+  font-size: 26px;
+  line-height: 1;
+  user-select: none;
+}
+
+.npc-hotspot-label {
+  display: none;
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 9px);
+  transform: translateY(-50%);
+  min-height: 34px;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid var(--gold-soft);
+  border-radius: 22px;
+  color: var(--olive-dark);
+  background: rgba(255, 253, 248, .98);
+  box-shadow: var(--shadow-xs);
+  font: 700 var(--text-sm)/1 var(--serif);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.npc-hotspot:hover .npc-hotspot-label {
+  display: flex;
+}
+
+.npc-hotspot-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f5c842;
+  color: #3a2e00;
+  font: 700 13px/20px var(--sans);
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .35);
+  animation: npc-badge-pulse 2s ease-in-out infinite;
+  z-index: 25;
+}
+
+@keyframes npc-badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.2); }
+}
+
+/* ── Quest Overlay ───────────────────────────────────────────────────────── */
+
+.quest-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 24px;
+}
+
+.quest-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(48, 40, 24, .52);
+  cursor: pointer;
+}
+
+.quest-overlay .npc-dialog-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.quest-overlay-loading {
+  position: relative;
+  z-index: 1;
+}
+
+.npc-reward-hint {
+  margin-top: 6px;
+  font: var(--text-sm) var(--sans);
+  color: var(--olive-dark);
+  background: rgba(201, 166, 78, .12);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.npc-completed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(102, 118, 67, .12);
+  color: var(--olive-dark);
+  font: 600 var(--text-sm)/1 var(--serif);
+}
+
+/* ── Choice buttons in quest dialogs ─────────────────────────────────────── */
+
+.npc-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.npc-choice-btn {
+  padding: 10px 14px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--paper-strong);
+  color: var(--ink);
+  font: 600 var(--text-sm)/1.3 var(--serif);
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, border-color .15s, transform .12s;
+}
+
+.npc-choice-btn:hover {
+  background: rgba(102, 118, 67, .08);
+  border-color: var(--olive);
+  transform: translateY(-1px);
+}
+
+.npc-choice-btn:active {
+  transform: translateY(0);
+}
+
 /* ── Responsive overrides — co-located with base rules to guarantee
       correct cascade in the Next.js production webpack CSS bundle.
       webpack splits map.css into a separate <link> loaded after the
@@ -380,5 +544,19 @@
   .legend li:nth-child(3),
   .legend li:nth-child(4) {
     display: flex;
+  }
+
+  .npc-hotspot {
+    width: 48px;
+    height: 48px;
+  }
+
+  .npc-hotspot-img {
+    width: 44px;
+    height: 44px;
+  }
+
+  .quest-overlay {
+    padding-bottom: 12px;
   }
 }

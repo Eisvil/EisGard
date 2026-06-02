@@ -512,10 +512,37 @@ _(пусто)_
 - Протестировано Playwright: мобильный 390px (scrollY=577 к `.feature`), десктоп 1440×900px (scrollY=157 к `.feature`)
 - Ветка `feature/npc-tutorial` влита в `main`
 
+### Система квестов (2026-06-02) — ветка feature/quest-system
+
+- [x] `supabase/migrations/20260602000000_quests.sql` — таблицы `quests` и `user_quests`, RLS, индексы, seed 3 квеста + 4 NPC-настройки в `settings`
+- [x] `src/app/actions/quests.ts` — Server Actions: `getAvailableQuests`, `acceptQuest`, `completeQuest` (+ awardPoints), admin CRUD (`adminCreateQuest/Update/Delete/Reorder`); Zod-валидация, auth.getUser()
+- [x] `src/components/features/NPCDialog.tsx` — расширен mode-prop: discriminated union `TutorialProps | QuestProps`; в quest-режиме: заголовок/описание квеста, кнопки «Принять задание»/«Отложить», точки прогресса; existing tutorial-mode без изменений
+- [x] `src/components/features/QuestOverlay.tsx` — новый компонент: fixed backdrop + `getAvailableQuests` по userId, pagination квестов, accept/decline flow; Escape-закрытие; пустое состояние
+- [x] `src/components/features/MapSection.tsx` — добавлены prop `npcSettings?: NpcSettings`, state `showQuestOverlay`, `userId`; NPC-иконка `.npc-hotspot` в блоке `.hotspots` (позиционирование %, кликает → `QuestOverlay`)
+- [x] `src/styles/map.css` — `.npc-hotspot`, `.npc-hotspot-img`, `.npc-hotspot-label`, `.quest-overlay`, `.quest-backdrop`, `.npc-reward-hint`, `.npc-completed-badge`; mobile overrides ≤760px
+- [x] `src/app/(public)/page.tsx` — в `Promise.all` добавлен запрос NPC-настроек; `npcSettings` передаётся в `<MapSection>`
+- [x] `src/components/features/admin/QuestManager.tsx` — shadcn Table + Dialog создания/редактирования + AlertDialog удаления; поля: title, description, reward_text, action_type (Select), action_url, reward_points, object_id, is_active, sort_order
+- [x] `src/app/(admin)/admin/quests/page.tsx` — Admin страница квестов, requireAdmin(['admin'])
+- [x] `src/components/layouts/AdminSidebar.tsx` — пункт «Квесты» (Sword) → `/admin/quests`
+- [x] `src/components/features/admin/SettingsManager.tsx` — вкладка «NPC»: npc_name, npc_portrait_url, npc_position_x/y
+- [x] `src/app/(admin)/admin/settings/page.tsx` — запрос расширен на 4 NPC-ключа
+- [x] `src/app/api/admin/settings/route.ts` — ALLOWED_KEYS + patchSchema расширены: `npc_name`, `npc_portrait_url`, `npc_position_x`, `npc_position_y`
+- **Build:** `✓ Compiled + TypeScript OK`, `/admin/quests` в роутах
+- **Примечание:** `database.ts` — заглушка, нужна регенерация после `npx supabase db push`
+- **Примечание:** авто-завершение квестов (при доне/подписке/волонтёрстве) — как хуки в соответствующих Server Actions — запланировано следующим шагом
+
+### Fix: загрузка портрета NPC с кроп-выделением (2026-06-02)
+
+- [x] `src/components/features/admin/NpcPortraitUploader.tsx` — **новый компонент**: загрузка файла → crop через вложенный shadcn `<Dialog>` (не portal-div); `convertToPixelCrop` выставляет `completedCrop` сразу при загрузке изображения — кнопка «Сохранить портрет» активна без ручного drag; файловый инпут вне Dialog; загрузка в `covers/npcs/`; 256×256 JPEG
+- [x] `src/components/features/admin/NpcManager.tsx` — весь inline crop-код удалён; portrait-секция заменена на `<NpcPortraitUploader>`; убраны неиспользуемые импорты (createPortal, ReactCrop, crop-state)
+- **Корневые причины предыдущих поломок:** (1) crop-модал использовал CSS-классы из `src/styles/components.css`, который не загружается в admin-контексте; (2) `createPortal` к `document.body` конфликтовал с Radix `DismissableLayer` — drag перехватывался, клик снаружи закрывал родительский Dialog; (3) `completedCrop` не выставлялся при начальном рендере → кнопка была заблокирована
+- **Решение:** вложенный Radix Dialog для кропа — корректный стекинг, drag работает, закрытие кропа не затрагивает NPC-Dialog
+- Протестировано Playwright: открытие файл-пикера, drag за угловой handle, закрытие crop → NPC-Dialog остаётся, сохранение портрета в Supabase Storage
+
 ## Следующее
 
 ### Игровые механики (запланировано)
-- [ ] **Квесты:** NPC на карте (портрет, имя, позиция), таблицы `quests` + `user_quests`, диалоги привязаны к действиям (донат / подписка / волонтёрство / материалы / партнёрство)
+- [ ] **Авто-завершение квестов:** хуки в `donations/webhook`, `subscriptions`, `volunteer-applications` → `completeQuest` при подходящем `action_type`
 - [ ] **Портрет NPC:** разместить арт-файл `/public/npc/elder.png` — fallback-иконка заменится автоматически
 - [ ] **Пригласить друга:** реферальная система, уникальные ссылки, баллы за приглашение
 - [ ] **Email-уведомления:** `donation_confirmed`, `new_title` — после подключения Resend
