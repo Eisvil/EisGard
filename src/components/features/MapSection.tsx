@@ -708,8 +708,11 @@ export function MapSection({ objects, initialChronicle = [], newsItems = [], sit
         />
       )}
 
-      {/* NPC Tutorial */}
-      <TutorialOverlay />
+      {/* NPC Tutorial — портрет и имя первого NPC (Ведун, sort_order=1) */}
+      <TutorialOverlay
+        npcName={npcs[0]?.name}
+        npcPortraitUrl={npcs[0]?.portrait_url ?? undefined}
+      />
 
       {/* NPC Quest Overlay */}
       {questOpenNpcId && (() => {

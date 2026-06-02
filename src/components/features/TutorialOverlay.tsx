@@ -23,7 +23,12 @@ function measureRect(el: Element, padding: number): SpotlightRect {
   };
 }
 
-export default function TutorialOverlay() {
+interface TutorialOverlayProps {
+  npcName?: string;
+  npcPortraitUrl?: string;
+}
+
+export default function TutorialOverlay({ npcName, npcPortraitUrl }: TutorialOverlayProps = {}) {
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [spotlight, setSpotlight] = useState<SpotlightRect | null>(null);
@@ -229,6 +234,8 @@ export default function TutorialOverlay() {
         onNext={handleNext}
         onPrev={handlePrev}
         onSkip={handleComplete}
+        npcName={npcName}
+        npcPortraitUrl={npcPortraitUrl}
       />
     </>
   );
