@@ -197,7 +197,7 @@ export default function CampsManager({ initialCamps }: { initialCamps: Camp[] })
                 <TableHead className="text-center">Подано</TableHead>
                 <TableHead className="text-center">Одобрено</TableHead>
                 <TableHead className="text-center">Статус</TableHead>
-                <TableHead className="w-32" />
+                <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -221,16 +221,15 @@ export default function CampsManager({ initialCamps }: { initialCamps: Camp[] })
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
-                        size="sm"
-                        className="gap-1.5 text-xs"
+                        size="icon"
                         title={camp.is_open ? 'Закрыть набор' : 'Открыть набор'}
                         disabled={loadingId === camp.id}
                         onClick={() => handleToggleOpen(camp)}
                       >
                         {camp.is_open ? (
-                          <><Lock className="h-3.5 w-3.5" /> Закрыть</>
+                          <Lock className="h-4 w-4" />
                         ) : (
-                          <><LockOpen className="h-3.5 w-3.5" /> Открыть</>
+                          <LockOpen className="h-4 w-4" />
                         )}
                       </Button>
                       <Button
