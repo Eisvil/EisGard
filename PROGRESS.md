@@ -531,6 +531,14 @@ _(пусто)_
 - **Примечание:** `database.ts` — заглушка, нужна регенерация после `npx supabase db push`
 - **Примечание:** авто-завершение квестов (при доне/подписке/волонтёрстве) — как хуки в соответствующих Server Actions — запланировано следующим шагом
 
+### Fix: загрузка портрета NPC с кроп-выделением (2026-06-02)
+
+- [x] `src/components/features/admin/NpcPortraitUploader.tsx` — **новый компонент**: загрузка файла → crop через вложенный shadcn `<Dialog>` (не portal-div); `convertToPixelCrop` выставляет `completedCrop` сразу при загрузке изображения — кнопка «Сохранить портрет» активна без ручного drag; файловый инпут вне Dialog; загрузка в `covers/npcs/`; 256×256 JPEG
+- [x] `src/components/features/admin/NpcManager.tsx` — весь inline crop-код удалён; portrait-секция заменена на `<NpcPortraitUploader>`; убраны неиспользуемые импорты (createPortal, ReactCrop, crop-state)
+- **Корневые причины предыдущих поломок:** (1) crop-модал использовал CSS-классы из `src/styles/components.css`, который не загружается в admin-контексте; (2) `createPortal` к `document.body` конфликтовал с Radix `DismissableLayer` — drag перехватывался, клик снаружи закрывал родительский Dialog; (3) `completedCrop` не выставлялся при начальном рендере → кнопка была заблокирована
+- **Решение:** вложенный Radix Dialog для кропа — корректный стекинг, drag работает, закрытие кропа не затрагивает NPC-Dialog
+- Протестировано Playwright: открытие файл-пикера, drag за угловой handle, закрытие crop → NPC-Dialog остаётся, сохранение портрета в Supabase Storage
+
 ## Следующее
 
 ### Игровые механики (запланировано)

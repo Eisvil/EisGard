@@ -1,14 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import ReactCrop, {
-  centerCrop,
-  makeAspectCrop,
-  type Crop,
-  type PixelCrop,
-} from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import { useState } from 'react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -24,50 +16,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, Trash2, Plus, Upload } from 'lucide-react';
-import { createBrowserSupabaseClient } from '@/lib/supabase/browser';
+import { Pencil, Trash2, Plus } from 'lucide-react';
 import { adminCreateNpc, adminUpdateNpc, adminDeleteNpc, type NpcRow } from '@/app/actions/quests';
-
-// ─── Crop helpers (same as AvatarUploader) ───────────────────────────────────
-
-function centerSquareCrop(width: number, height: number): Crop {
-  return centerCrop(
-    makeAspectCrop({ unit: '%', width: 80 }, 1, width, height),
-    width,
-    height,
-  );
-}
-
-async function getCroppedBlob(image: HTMLImageElement, crop: PixelCrop): Promise<Blob> {
-  const canvas = document.createElement('canvas');
-  const size = 256;
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas context unavailable');
-
-  const scaleX = image.naturalWidth / image.width;
-  const scaleY = image.naturalHeight / image.height;
-
-  ctx.drawImage(
-    image,
-    Math.round(crop.x * scaleX),
-    Math.round(crop.y * scaleY),
-    Math.round(crop.width * scaleX),
-    Math.round(crop.height * scaleY),
-    0, 0, size, size,
-  );
-
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('Canvas toBlob failed'))),
-      'image/jpeg',
-      0.92,
-    );
-  });
-}
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { NpcPortraitUploader } from './NpcPortraitUploader';
 
 interface Props {
   initialNpcs: NpcRow[];
@@ -91,8 +42,6 @@ const EMPTY_FORM: FormState = {
   sort_order: 1,
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function NpcManager({ initialNpcs }: Props) {
   const [npcs, setNpcs] = useState<NpcRow[]>(initialNpcs);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -100,19 +49,8 @@ export default function NpcManager({ initialNpcs }: Props) {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
-
-  // Crop state
-  const [cropImgSrc, setCropImgSrc] = useState<string | null>(null);
-  const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
-  const [mounted, setMounted] = useState(false);
-  const cropImgRef = useRef<HTMLImageElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { setMounted(true); }, []);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -138,58 +76,6 @@ export default function NpcManager({ initialNpcs }: Props) {
     });
     setError('');
     setDialogOpen(true);
-  }
-
-  // Open file picker → read as data URL → show crop modal
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Файл слишком большой (макс. 5 МБ)');
-      e.target.value = '';
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = () => {
-      setCropImgSrc(reader.result as string);
-      setCrop(undefined);
-      setCompletedCrop(undefined);
-      setError('');
-    };
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  }
-
-  const onCropImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget;
-    setCrop(centerSquareCrop(width, height));
-  }, []);
-
-  async function handleCropConfirm() {
-    if (!cropImgRef.current || !completedCrop) return;
-    setUploading(true);
-    setError('');
-    try {
-      const blob = await getCroppedBlob(cropImgRef.current, completedCrop);
-      const supabase = createBrowserSupabaseClient();
-      const path = `npcs/${editingId ?? 'new'}_${Date.now()}.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from('covers')
-        .upload(path, blob, { upsert: true, contentType: 'image/jpeg' });
-      if (uploadError) { setError('Ошибка загрузки: ' + uploadError.message); return; }
-      const { data: { publicUrl } } = supabase.storage.from('covers').getPublicUrl(path);
-      setForm(f => ({ ...f, portrait_url: publicUrl }));
-      setCropImgSrc(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Ошибка загрузки');
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function handleCropCancel() {
-    setCropImgSrc(null);
-    setError('');
   }
 
   async function handleSave() {
@@ -245,16 +131,6 @@ export default function NpcManager({ initialNpcs }: Props) {
           {toast}
         </div>
       )}
-
-      {/* File input OUTSIDE Dialog — иначе Radix Dialog закрывается при открытии нативного пикера,
-          input размонтируется и onChange никогда не срабатывает */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        className="hidden"
-        onChange={handleFileChange}
-      />
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
@@ -326,39 +202,26 @@ export default function NpcManager({ initialNpcs }: Props) {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingId ? 'Редактировать персонажа' : 'Новый персонаж'}</DialogTitle>
-            <DialogDescription>Имя, портрет и начальная позиция. Для размещения на карте используйте раздел Карта.</DialogDescription>
+            <DialogDescription>
+              Имя, портрет и начальная позиция. Для размещения на карте используйте раздел Карта.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            {/* Portrait */}
+            {/* Portrait — отдельный компонент с crop-логикой */}
             <div className="space-y-2">
               <Label>Портрет</Label>
-              <div className="flex items-center gap-3">
-                {form.portrait_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={form.portrait_url} alt="" className="w-16 h-16 rounded-full object-cover border border-border flex-none" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-border flex items-center justify-center text-2xl flex-none">👤</div>
-                )}
-                <div className="flex flex-col gap-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploading}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload size={13} className="mr-1.5" />
-                    {uploading ? 'Загружается…' : 'Загрузить'}
-                  </Button>
-                  <Input
-                    value={form.portrait_url}
-                    onChange={e => setForm(f => ({ ...f, portrait_url: e.target.value }))}
-                    placeholder="или URL изображения"
-                    className="text-xs h-7"
-                  />
-                </div>
-              </div>
+              <NpcPortraitUploader
+                portraitUrl={form.portrait_url || null}
+                npcId={editingId}
+                onUpload={(url) => setForm(f => ({ ...f, portrait_url: url }))}
+              />
+              <Input
+                value={form.portrait_url}
+                onChange={e => setForm(f => ({ ...f, portrait_url: e.target.value }))}
+                placeholder="или вставьте URL изображения"
+                className="text-xs h-7 mt-1"
+              />
             </div>
 
             {/* Name */}
@@ -435,62 +298,12 @@ export default function NpcManager({ initialNpcs }: Props) {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Отмена</Button>
-            <Button onClick={handleSave} disabled={saving || uploading}>
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? 'Сохранение…' : 'Сохранить'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Crop modal — portal to document.body, чтобы быть поверх shadcn Dialog */}
-      {mounted && cropImgSrc && createPortal(
-        <div className="crop-modal-overlay" style={{ zIndex: 9999 }} onClick={handleCropCancel}>
-          <div className="crop-modal" onClick={(e) => e.stopPropagation()}>
-            <h3 className="crop-modal-title">Выбрать область портрета</h3>
-            <p className="crop-modal-hint">Перетащите и измените размер квадрата</p>
-
-            <div className="crop-modal-canvas">
-              <ReactCrop
-                crop={crop}
-                onChange={(c) => setCrop(c)}
-                onComplete={(c) => setCompletedCrop(c)}
-                aspect={1}
-                circularCrop={false}
-                keepSelection
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  ref={cropImgRef}
-                  src={cropImgSrc}
-                  alt="Кроп портрета"
-                  onLoad={onCropImageLoad}
-                  style={{ maxHeight: '60vh', maxWidth: '100%' }}
-                />
-              </ReactCrop>
-            </div>
-
-            {error && <p className="cert-error">{error}</p>}
-
-            <div className="crop-modal-actions">
-              <button
-                className="primary-button"
-                onClick={handleCropConfirm}
-                disabled={uploading || !completedCrop}
-              >
-                {uploading ? 'Загружается…' : 'Сохранить портрет'}
-              </button>
-              <button
-                className="text-link"
-                onClick={handleCropCancel}
-                disabled={uploading}
-              >
-                Отмена
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={open => { if (!open) setDeleteId(null); }}>
@@ -503,7 +316,10 @@ export default function NpcManager({ initialNpcs }: Props) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Удалить
             </AlertDialogAction>
           </AlertDialogFooter>
