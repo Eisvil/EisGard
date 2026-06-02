@@ -539,10 +539,56 @@ _(пусто)_
 - **Решение:** вложенный Radix Dialog для кропа — корректный стекинг, drag работает, закрытие кропа не затрагивает NPC-Dialog
 - Протестировано Playwright: открытие файл-пикера, drag за угловой handle, закрытие crop → NPC-Dialog остаётся, сохранение портрета в Supabase Storage
 
+### Доработка системы квестов (2026-06-04 — 2026-06-06)
+
+#### Типы действий и авто-завершение
+- [x] Новые типы action_type: `dialog` (вопрос/ответ) добавлен в DB CHECK и TypeScript enum
+- [x] `action_url` вычисляется автоматически в QuestManager по `action_type` + `object_id` (убран ручной ввод)
+- [x] `autoCompleteQuestsOnAction(userId, actionType, objectId?)` — новая service-role функция; вызывается из вебхука ЮMoney (donate/subscribe), admin volunteer-applications (approved), material-applications (received), partner-applications (approved)
+- [x] CTA-кнопки `donate`/`subscribe` открывают `SupportModal` прямо на карте (не навигация на другую страницу)
+- [x] `partner_applications` расширена колонкой `user_id` (nullable); заявка подаётся с user_id если пользователь авторизован
+
+#### Тип «Диалог» (вопрос/ответ)
+- [x] `action_type='dialog'`: цепочка текстовых и choice-шагов; `next: 'next'` = правильный ответ, `next: 'decline'` = неправильный
+- [x] Неправильный ответ → fail-state «Ступай путник. Подумай хорошенько и приходи в другой раз.» → диалог закрывается, квест можно повторить
+- [x] Правильные ответы на всех шагах → `completeQuest()` → баллы начислены
+- [x] QuestManager: в режиме dialog выбор варианта ответа помечен «Правильный»/«Неправильный»; CTA-кнопка скрыта
+- [x] NPC исчезает с карты если у него есть принятое задание (badge `!` пропадает)
+
+#### Recurring-квесты и условная видимость NPC
+- [x] `supabase/migrations/20260604000000_quest_dialog_and_partners.sql` — `dialog` в CHECK, `user_id` в partner_applications
+- [x] `supabase/migrations/20260605000000_quest_recurring.sql` — новые колонки `quests`: `is_recurring`, `hide_npc_on_complete`, `prerequisite_quest_id`, `available_from`, `available_until`; `user_quests.reactivated_count`
+- [x] `resetRecurringQuestsOnSubscriptionLapse(userId, objectId?)` — сбрасывает recurring subscribe-квесты в `offered` при отмене/паузе подписки; вызывается из `DELETE /api/subscriptions/[id]` и `cron/subscriptions`
+- [x] `hide_npc_on_complete` — NPC полностью скрывается с карты пока квест выполнен (бездельник исчезает при оформлении подписки)
+- [x] `prerequisite_quest_id` — квест виден только после выполнения предыдущего (квестовые цепочки)
+- [x] `available_from / available_until` — сезонные/временные квесты; фильтрация в `getAvailableQuests` и `page.tsx`
+- [x] `reactivated_count` — счётчик сколько раз recurring-квест был сброшен и перевыполнен
+- [x] QuestManager: форма расширена чекбоксами `is_recurring`/`hide_npc_on_complete`, Select для prerequisite, DateTimePicker для дат
+
+#### Badge-логика и Realtime
+- [x] `supabase/migrations/20260606000000_enable_realtime_user_quests.sql` — `ALTER PUBLICATION supabase_realtime ADD TABLE user_quests`; без этого `postgres_changes` не работал
+- [x] `MapSection.tsx` — три state: `completedNpcIds` (все квесты выполнены), `hiddenNpcIds` (hide_npc_on_complete), `blockedNpcIds` (все квесты заблокированы prerequisite)
+- [x] `doRefreshQuestState(sb, uid)` — единая функция пересчёта всех трёх state; вызывается на mount, из Realtime и из `onQuestChanged` callback
+- [x] `onQuestChanged` — prop из QuestOverlay → MapSection, вызывается после `acceptQuest`/`completeQuest` → мгновенный refresh без ожидания Realtime-задержки (~200ms)
+- [x] Badge `!` скрывается если NPC в `completedNpcIds` ИЛИ `hiddenNpcIds` ИЛИ `blockedNpcIds`; NPC полностью скрывается если в `hiddenNpcIds`
+
+#### Rich Text в диалогах квестов
+- [x] `TiptapEditor`: добавлен prop `simple?: boolean` — скрывает кнопки Image/YouTube (не нужны для реплик NPC)
+- [x] `QuestManager / DialogStepEditor`: `Textarea` заменён на `TiptapEditor simple`; helper `toTiptapDoc()` конвертирует plain-string в Tiptap JSON при открытии
+- [x] `DialogStep.text`: тип расширен до `string | Record<string, unknown>` (backward-compat); Zod схема принимает оба формата
+- [x] `NPCDialog.tsx`: `renderNpcText()` — если text объект → `<TiptapRenderer>`; если строка → `<p>` (старые квесты работают без изменений)
+- [x] **Fix TiptapRenderer stale content**: добавлен `useEffect(() => editor.commands.setContent(content), [editor, content])` — без этого текст в диалоге не менялся при переходе между шагами
+- [x] `components.css`: `.npc-text p/strong/em/ul/ol/a` — стили для вложенных тегов от TiptapRenderer
+
+#### Навигация в цепочках
+- [x] `handleDialogComplete` переупорядочен перед `handleNextDialog` (исправлен forward-reference TypeScript error)
+- [x] После завершения квеста: `getAvailableQuests` вызывается заново → новые квесты в цепочке появляются в оверлее автоматически
+- [x] NPCDialog: кнопки `←/→` добавлены в состояние «Выполнено ✓» → можно перейти к следующему квесту без закрытия оверлея
+- [x] `blockedNpcIds` обновляется через Realtime — значок `!` на следующем NPC появляется мгновенно после завершения prerequisite-квеста
+
 ## Следующее
 
 ### Игровые механики (запланировано)
-- [ ] **Авто-завершение квестов:** хуки в `donations/webhook`, `subscriptions`, `volunteer-applications` → `completeQuest` при подходящем `action_type`
 - [ ] **Портрет NPC:** разместить арт-файл `/public/npc/elder.png` — fallback-иконка заменится автоматически
 - [ ] **Пригласить друга:** реферальная система, уникальные ссылки, баллы за приглашение
 - [ ] **Email-уведомления:** `donation_confirmed`, `new_title` — после подключения Resend

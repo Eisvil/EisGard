@@ -394,8 +394,63 @@ Spotlight реализован через один `position: fixed` div с `box
 
 **Почему:** NPC один, его конфиг — плоский набор скалярных значений. `settings` уже используется для аналогичных настроек (social_vk, points_per_ruble и т.д.). Отдельная таблица не добавила бы выразительности, но усложнила бы схему и UI.
 
-## Квесты: завершение квестов — ручной вызов completeQuest, не автоматическое
+## Квесты: завершение квестов — `autoCompleteQuestsOnAction`, не триггер в БД
 
-`completeQuest` — явный Server Action, который нужно вызывать из логики конкретного действия (вебхук доната, обработка подписки, и т.п.).
+`autoCompleteQuestsOnAction(userId, actionType, objectId?)` — service-role функция, вызывается fire-and-forget из вебхуков и admin-роутов.
 
-**Почему не авто-триггер в БД:** триггер не знает о конкретном `action_type` квеста и не может вызвать `awardPoints` (который использует service-role). Server Action с явным вызовом — единственная точка интеграции, легко тестируемая и прослеживаемая. Интеграция с существующими donation/subscription/volunteer потоками — следующий шаг.
+**Почему не авто-триггер в БД:** триггер не знает о `action_type` квеста и не может вызвать `awardPoints` (service-role). Явный вызов — единственная прослеживаемая точка интеграции.
+
+**Точки вызова:** `ymoney/webhook` (donate + subscribe), `admin/volunteer-applications` (approved), `admin/material-applications` (received), `admin/partner-applications` (approved). Для subscribe включает статус `'offered'` (recurring-квест после сброса).
+
+## Квесты: action_url вычисляется автоматически, не вводится вручную
+
+В QuestManager поле `action_url` убрано из формы. URL вычисляется через `computeActionUrl(actionType, objectId, objects)`:
+- `donate`/`subscribe` + object → `/objects/[slug]`; без object → `/`
+- `volunteer` → `/volunteers`; `material` → `/materials`; `partner` → `/partners`; `dialog` → `null`
+
+**Почему:** ручной ввод URL приводил к ошибкам (`/donate`, `/subscribe` — несуществующие маршруты из seed).
+
+## Квесты: тип `dialog` — `'decline'` как неправильный ответ
+
+Для `action_type='dialog'` значение `choice.next = 'decline'` переиспользовано как «неправильный ответ» (вместо добавления нового `'wrong'`). В QuestOverlay при `decline` + `dialog` тип → fail-state. При `decline` + другой тип → обычное «Отложить».
+
+**Почему:** не пришлось менять CHECK constraint в БД и добавлять новое значение в enum. QuestManager отображает `'decline'` как «Неправильный ответ» в dialog-квестах.
+
+## Квесты: NPC-видимость — три клиентских state в MapSection
+
+Вместо серверной фильтрации badge-логика полностью клиентская, три массива:
+- `completedNpcIds` — у NPC все активные квесты выполнены → badge скрыт
+- `hiddenNpcIds` — у NPC есть квест с `hide_npc_on_complete=true` в статусе `completed` → NPC не рендерится
+- `blockedNpcIds` — у NPC все квесты заблокированы невыполненным `prerequisite_quest_id` → badge скрыт
+
+**Почему не серверная:** `page.tsx` использует статический клиент (ISR), не знает о конкретном пользователе. Клиентский пересчёт в `doRefreshQuestState` работает после Realtime-событий.
+
+## Квесты: Realtime требует ALTER PUBLICATION
+
+`postgres_changes` в Supabase работает только если таблица добавлена в publication:
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE user_quests;
+```
+Без этого подписка создаётся, но события никогда не приходят. Диагностика: `SELECT * FROM pg_publication_tables WHERE pubname = 'supabase_realtime'`.
+
+## Квесты: двойной механизм refresh (Realtime + onQuestChanged callback)
+
+После `acceptQuest`/`completeQuest` в QuestOverlay: немедленный `doRefreshQuestState` через `onQuestChanged` callback (не ждёт Realtime-задержки ~200ms). Realtime подтверждает через ~200ms (idempotent).
+
+**Почему не только Realtime:** Realtime может иметь задержку, иногда требует тёплого соединения. Callback гарантирует мгновенную реакцию.
+
+## Квесты: перезагрузка списка после завершения, не локальное обновление
+
+`handleDialogComplete` вызывает `getAvailableQuests(userId, npcId)` заново после успешного `completeQuest`. Это критично для цепочек: новый квест (prerequisite только что закрылся) появляется в оверлее сразу.
+
+**Почему не только `setQuests(updated)`:** локальное обновление только меняет статус текущего квеста, но не загружает новые квесты, разблокированные prerequisite.
+
+## TiptapRenderer: useEffect для синхронизации content
+
+`useEditor({ content })` в Tiptap принимает `content` только как начальное значение. При смене `content` prop (переход между шагами диалога) необходим явный вызов:
+```typescript
+useEffect(() => {
+  if (editor && content) editor.commands.setContent(content);
+}, [editor, content]);
+```
+Без этого текст в диалогах NPC не менялся при нажатии «Далее». Актуально для любого компонента на базе `useEditor` с изменяемым контентом.
